@@ -223,6 +223,68 @@ final class XString implements Stringable
         return new self($additional . $this->value, $this->mode, $this->encoding);
     }
 
+    public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
+    {
+        return $this->trimInternal(true, true, $newline, $space, $tab);
+    }
+
+    public function ltrim(bool $newline = true, bool $space = true, bool $tab = true): self
+    {
+        return $this->trimInternal(true, false, $newline, $space, $tab);
+    }
+
+    public function rtrim(bool $newline = true, bool $space = true, bool $tab = true): self
+    {
+        return $this->trimInternal(false, true, $newline, $space, $tab);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function replace(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        HtmlTag|Newline|Regex|Stringable|string $replace,
+        ?int $limit = null,
+        bool $reversed = false
+    ): self {
+        if ($limit !== null && $limit < 0) {
+            throw new InvalidArgumentException('Limit must be greater than or equal to 0.');
+        }
+
+        $search_values = self::normalizeSearchValues($search);
+        if ($limit === 0) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $replacement = self::normalizeFragment($replace);
+        $remaining = $limit ?? PHP_INT_MAX;
+        $result = $this->value;
+
+        foreach ($search_values as $search_value) {
+            if ($remaining === 0) {
+                break;
+            }
+
+            if ($reversed) {
+                $result = self::replaceFromEnd($result, $search_value, $replacement, $remaining);
+            } else {
+                $result = self::replaceFromStart($result, $search_value, $replacement, $remaining);
+            }
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function replaceFirst(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        HtmlTag|Newline|Regex|Stringable|string $replace
+    ): self {
+        return $this->replace($search, $replace, 1);
+    }
+
     public function toUpper(): self
     {
         $upper = function_exists('mb_strtoupper')
@@ -338,6 +400,107 @@ final class XString implements Stringable
         }
 
         return implode('', $fragments);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     * @return array<int, string>
+     */
+    private static function normalizeSearchValues(HtmlTag|Newline|Regex|Stringable|string|array $search): array
+    {
+        $items = is_array($search) ? $search : [$search];
+        $normalized = [];
+
+        foreach ($items as $item) {
+            $fragment = self::normalizeFragment($item);
+            if ($fragment === '') {
+                throw new InvalidArgumentException('Search value cannot be empty.');
+            }
+
+            $normalized[] = $fragment;
+        }
+
+        return $normalized;
+    }
+
+    private function trimInternal(bool $trim_left, bool $trim_right, bool $newline, bool $space, bool $tab): self
+    {
+        $mask = self::buildTrimMask($newline, $space, $tab);
+        if ($mask === '') {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $result = $this->value;
+        if ($trim_left && $trim_right) {
+            $result = trim($result, $mask);
+        } elseif ($trim_left) {
+            $result = ltrim($result, $mask);
+        } elseif ($trim_right) {
+            $result = rtrim($result, $mask);
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    private static function buildTrimMask(bool $newline, bool $space, bool $tab): string
+    {
+        $mask = '';
+
+        if ($space) {
+            $mask .= ' ';
+        }
+
+        if ($tab) {
+            $mask .= "\t";
+        }
+
+        if ($newline) {
+            $mask .= "\r\n";
+        }
+
+        return $mask;
+    }
+
+    private static function replaceFromStart(string $subject, string $search, string $replace, int &$remaining): string
+    {
+        $search_length = strlen($search);
+        $offset = 0;
+
+        while ($remaining > 0) {
+            $position = strpos($subject, $search, $offset);
+            if ($position === false) {
+                break;
+            }
+
+            $subject = substr($subject, 0, $position)
+                . $replace
+                . substr($subject, $position + $search_length);
+
+            $offset = $position + strlen($replace);
+            $remaining--;
+        }
+
+        return $subject;
+    }
+
+    private static function replaceFromEnd(string $subject, string $search, string $replace, int &$remaining): string
+    {
+        $search_length = strlen($search);
+
+        while ($remaining > 0) {
+            $position = strrpos($subject, $search);
+            if ($position === false) {
+                break;
+            }
+
+            $subject = substr($subject, 0, $position)
+                . $replace
+                . substr($subject, $position + $search_length);
+
+            $remaining--;
+        }
+
+        return $subject;
     }
 
     /**
