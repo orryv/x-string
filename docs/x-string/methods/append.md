@@ -12,7 +12,7 @@
   - [Examples](#examples)
     - [Append a simple string](#append-a-simple-string)
     - [Append multiple fragments at once](#append-multiple-fragments-at-once)
-    - [Appending `Newline` and `Regex` instances](#appending-newline-and-regex-instances)
+    - [Appending `Newline`, `HtmlTag`, and `Regex` instances](#appending-newline-htmltag-and-regex-instances)
     - [Original instance remains unchanged](#original-instance-remains-unchanged)
     - [Invalid fragments raise an exception](#invalid-fragments-raise-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -22,7 +22,7 @@
 **Signature:**
 
 ```php
-public function append(Newline|Regex|Stringable|string|array $data): self
+public function append(Newline|HtmlTag|Regex|Stringable|string|array $data): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -32,8 +32,7 @@ public function append(Newline|Regex|Stringable|string|array $data): self
 ## Description
 
 Returns a new immutable `XString` with the provided fragment(s) appended to the current value. The method accepts plain strings,
-objects implementing `Stringable` (including `Newline` and `Regex`), or an array of such values that will be concatenated in
-order.
+objects implementing `Stringable` (including `Newline`, `HtmlTag`, and `Regex`), or an array of such values that will be concatenated in order.
 
 ## Important notes and considerations
 
@@ -45,7 +44,7 @@ order.
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$data` | — | `Newline\|Regex\|Stringable\|string\|array<Newline\|Regex\|Stringable\|string>` | Fragment(s) to append. Arrays are concatenated in order. |
+| `$data` | — | `Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string>` | Fragment(s) to append. Arrays are concatenated in order. |
 
 ## Returns
 
@@ -83,10 +82,11 @@ $updated = $original->append(['-', 'bar', '-', 'baz']);
 #Test: self::assertSame('foo-bar-baz', (string) $updated);
 ```
 
-### Appending `Newline` and `Regex` instances
+### Appending `Newline`, `HtmlTag`, and `Regex` instances
 
 <!-- test:append-stringables -->
 ```php
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
 use Orryv\XString;
@@ -94,9 +94,10 @@ use Orryv\XString;
 $original = XString::new('Pattern');
 $updated = $original->append([
     Newline::new(),
+    HtmlTag::new('span')->withClass('highlight'),
     Regex::new('/[a-z]+/i'),
 ]);
-#Test: self::assertSame("Pattern\n/[a-z]+/i", (string) $updated);
+#Test: self::assertSame("Pattern\n<span class=\"highlight\"></span>/[a-z]+/i", (string) $updated);
 ```
 
 ### Original instance remains unchanged
@@ -128,4 +129,4 @@ $original->append([new stdClass()]);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::append` | `public function append(Newline\|Regex\|Stringable\|string\|array $data): self` — Return a new instance with the provided fragment(s) appended. |
+| `XString::append` | `public function append(Newline\|HtmlTag\|Regex\|Stringable\|string\|array $data): self` — Return a new instance with the provided fragment(s) appended. |

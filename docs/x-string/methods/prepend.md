@@ -12,7 +12,7 @@
   - [Examples](#examples)
     - [Prepend a simple string](#prepend-a-simple-string)
     - [Prepend multiple fragments in order](#prepend-multiple-fragments-in-order)
-    - [Prepending `Newline` and `Regex` instances](#prepending-newline-and-regex-instances)
+    - [Prepending `Newline`, `HtmlTag`, and `Regex` instances](#prepending-newline-htmltag-and-regex-instances)
     - [Original instance stays unchanged](#original-instance-stays-unchanged)
     - [Invalid fragments raise an exception](#invalid-fragments-raise-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -22,7 +22,7 @@
 **Signature:**
 
 ```php
-public function prepend(Newline|Regex|Stringable|string|array $data): self
+public function prepend(Newline|HtmlTag|Regex|Stringable|string|array $data): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -32,7 +32,7 @@ public function prepend(Newline|Regex|Stringable|string|array $data): self
 ## Description
 
 Returns a new immutable `XString` with the provided fragment(s) inserted before the current value. Just like `append()`, the
-method accepts plain strings, `Stringable` objects (including `Newline`/`Regex`), or an array of such fragments.
+method accepts plain strings, `Stringable` objects (including `Newline`/`HtmlTag`/`Regex`), or an array of such fragments.
 
 ## Important notes and considerations
 
@@ -44,7 +44,7 @@ method accepts plain strings, `Stringable` objects (including `Newline`/`Regex`)
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$data` | — | `Newline\|Regex\|Stringable\|string\|array<Newline\|Regex\|Stringable\|string>` | Fragment(s) to prepend. Arrays are concatenated in order. |
+| `$data` | — | `Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string>` | Fragment(s) to prepend. Arrays are concatenated in order. |
 
 ## Returns
 
@@ -82,20 +82,22 @@ $updated = $original->prepend(['<', 'div', '>']);
 #Test: self::assertSame('<div>body', (string) $updated);
 ```
 
-### Prepending `Newline` and `Regex` instances
+### Prepending `Newline`, `HtmlTag`, and `Regex` instances
 
 <!-- test:prepend-stringables -->
 ```php
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
 use Orryv\XString;
 
 $original = XString::new('Content');
 $updated = $original->prepend([
+    HtmlTag::new('section')->withId('intro'),
     Regex::new('/^Title:/'),
     Newline::new(),
 ]);
-#Test: self::assertSame("/^Title:/\nContent", (string) $updated);
+#Test: self::assertSame("<section id=\"intro\">/^Title:/\nContent", (string) $updated);
 ```
 
 ### Original instance stays unchanged
@@ -127,4 +129,4 @@ $original->prepend([new stdClass()]);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::prepend` | `public function prepend(Newline\|Regex\|Stringable\|string\|array $data): self` — Return a new instance with the provided fragment(s) placed before the current value. |
+| `XString::prepend` | `public function prepend(Newline\|HtmlTag\|Regex\|Stringable\|string\|array $data): self` — Return a new instance with the provided fragment(s) placed before the current value. |

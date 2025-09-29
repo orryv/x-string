@@ -12,7 +12,7 @@
   - [Examples](#examples)
     - [Join fragments with a separator](#join-fragments-with-a-separator)
     - [Alias behaves identically to `implode()`](#alias-behaves-identically-to-implode)
-    - [Join `Newline` instances and strings](#join-newline-instances-and-strings)
+    - [Join `Newline`, `HtmlTag`, and string fragments](#join-newline-htmltag-and-string-fragments)
     - [Joining an empty array returns an empty string](#joining-an-empty-array-returns-an-empty-string)
     - [Invalid fragments trigger an exception](#invalid-fragments-trigger-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -33,20 +33,20 @@ public static function join(array $data, string $glue = ''): self
 
 `XString::join()` is a thin alias around [`XString::implode()`](./implode.md). It concatenates an array of fragments into a new
 immutable `XString`, optionally inserting a glue string between each fragment. Fragments may be plain strings or any
-`Stringable` value such as `Newline` or `Regex` instances.
+`Stringable` value such as `Newline`, `HtmlTag`, or `Regex` instances.
 
 ## Important notes and considerations
 
 - **Alias semantics.** This method is strictly equivalent to `XString::implode()` and exists for familiarity with PHP's native
   `join()` helper.
-- **Accepts stringables.** Any fragment implementing `Stringable` (including `Newline`/`Regex`) is supported.
+- **Accepts stringables.** Any fragment implementing `Stringable` (including `Newline`/`HtmlTag`/`Regex`) is supported.
 - **Immutable result.** The input array is untouched; a brand-new `XString` is returned.
 
 ## Parameters
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$data` | — | `array<Newline\|Regex\|Stringable\|string>` | Fragments to concatenate. Each element must be convertible to string. |
+| `$data` | — | `array<Newline\|HtmlTag\|Regex\|Stringable\|string>` | Fragments to concatenate. Each element must be convertible to string. |
 | `$glue` | `''` | `string` | Optional separator inserted between fragments. |
 
 ## Returns
@@ -85,10 +85,11 @@ $join = XString::join($fragments, ' / ');
 #Test: self::assertSame((string) $implode, (string) $join);
 ```
 
-### Join `Newline` instances and strings
+### Join `Newline`, `HtmlTag`, and string fragments
 
 <!-- test:join-newline -->
 ```php
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString;
 
@@ -96,11 +97,12 @@ $parts = [
     'Line 1',
     Newline::new(),
     'Line 2',
+    HtmlTag::new('br', true),
     Newline::new("\r\n"),
     'Line 3',
 ];
 $result = XString::join($parts);
-#Test: self::assertSame("Line 1\nLine 2\r\nLine 3", (string) $result);
+#Test: self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
 ```
 
 ### Joining an empty array returns an empty string
@@ -128,4 +130,4 @@ XString::join(['ok', 123]);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::join` | `public static function join(array $data, string $glue = ''): self` — Alias of `implode()` that concatenates fragments with an optional glue string. |
+| `XString::join` | `public static function join(array $data, string $glue = ''): self` — Alias of `implode()` that concatenates fragments (including HtmlTag instances) with an optional glue string. |

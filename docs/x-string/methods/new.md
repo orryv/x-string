@@ -12,6 +12,7 @@
   - [Examples](#examples)
     - [Create from a plain string](#create-from-a-plain-string)
     - [Combine array values without mutating the source](#combine-array-values-without-mutating-the-source)
+    - [Combine adapters, including HtmlTag](#combine-adapters-including-htmltag)
     - [Empty input defaults to an empty string](#empty-input-defaults-to-an-empty-string)
     - [Unsupported data in the array raises an exception](#unsupported-data-in-the-array-raises-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -21,7 +22,7 @@
 **Signature:**
 
 ```php
-public static function new(Newline|Regex|string|array<Newline|Regex|string> $data = ''): self
+public static function new(Newline|HtmlTag|Regex|Stringable|string|array<Newline|HtmlTag|Regex|Stringable|string> $data = ''): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -30,15 +31,15 @@ public static function new(Newline|Regex|string|array<Newline|Regex|string> $dat
 
 ## Description
 
-Creates a new immutable `XString` instance from the supplied data. The method accepts individual strings, newline adapters,
-regular-expression adapters, or arrays containing any mixture of those values. Array inputs are concatenated in order without
+Creates a new immutable `XString` instance from the supplied data. The method accepts individual strings, newline adapters, HTML tag adapters,
+regular-expression adapters, other `Stringable` implementations, or arrays containing any mixture of those values. Array inputs are concatenated in order without
 introducing extra separators. When no argument is provided the method yields an empty `XString`.
 
 **Algorithm overview:**
 
 - Normalises `$data` into an ordered list of string fragments:
   - Single values are wrapped in an array.
-  - `Newline`/`Regex` adapters are converted to their string representation.
+  - `Newline`/`HtmlTag`/`Regex` adapters are converted to their string representation.
 - Validates that every fragment is scalar string data.
 - Concatenates the fragments without modifying the original input array.
 - Creates a new `XString` with the concatenated string, preserving the default grapheme mode and UTF-8 encoding.
@@ -47,7 +48,7 @@ introducing extra separators. When no argument is provided the method yields an 
 ## Important notes and considerations
 
 - **Immutability.** `XString::new()` always returns a fresh instance; it never mutates the input data.
-- **Adapters.** `Newline` and `Regex` adapters are string-cast before concatenation, allowing fluent pipelines.
+- **Adapters.** `Newline`, `HtmlTag`, and `Regex` adapters are string-cast before concatenation, allowing fluent pipelines.
 - **Arrays are optional.** Passing a plain string is the common case, but arrays enable batching inputs that originate from
   iterative processes.
 - **Mode & encoding.** The produced instance starts in grapheme mode with UTF-8 encoding. Use `withMode()` when a different
@@ -57,7 +58,7 @@ introducing extra separators. When no argument is provided the method yields an 
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$data` | `''` | `Newline\|Regex\|string\|array<Newline\|Regex\|string>` | Source material for the new instance. Arrays are concatenated in order. |
+| `$data` | `''` | `Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string>` | Source material for the new instance. Arrays are concatenated in order. |
 
 ## Returns
 
@@ -69,7 +70,7 @@ introducing extra separators. When no argument is provided the method yields an 
 
 | Exception | When |
 | --- | --- |
-| `\InvalidArgumentException` | `$data` (or any array element) is not a `Newline`, `Regex`, or `string` value. |
+| `\InvalidArgumentException` | `$data` (or any array element) is not a `Newline`, `HtmlTag`, `Regex`, `Stringable`, or `string` value. |
 
 ## Examples
 
@@ -96,6 +97,24 @@ $result = XString::new($parts);
 #Test: self::assertSame(['Hello', ' ', 'world', '!'], $parts);
 ```
 
+
+### Combine adapters, including HtmlTag
+
+<!-- test:xstring-new-html-tag -->
+```php
+use Orryv\\XString;
+use Orryv\\XString\\HtmlTag;
+use Orryv\\XString\\Newline;
+
+$fragments = [
+    HtmlTag::new('p')->withClass(['intro', 'lead']),
+    'Hello',
+    Newline::new(),
+    HtmlTag::closeTag('p'),
+];
+$result = XString::new($fragments);
+#Test: self::assertSame('<p class=\"intro lead\">Hello\n</p>', (string) $result);
+```
 ### Empty input defaults to an empty string
 
 <!-- test:xstring-new-empty -->
@@ -120,4 +139,4 @@ XString::new(['valid', 123]);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::new` | `public static function new(Newline\|Regex\|string\|array<Newline\|Regex\|string> $data = ''): self` — Create a new immutable `XString` instance by concatenating the provided data. |
+| `XString::new` | `public static function new(Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string> $data = ''): self` — Create a new immutable `XString` instance by concatenating the provided data. |
