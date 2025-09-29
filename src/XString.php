@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Orryv;
 
 use InvalidArgumentException;
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
 use Orryv\XString\Exceptions\EmptyCharacterSetException;
@@ -31,9 +32,9 @@ final class XString implements Stringable
     }
 
     /**
-     * @param array<int, Newline|Regex|Stringable|string> $data
+     * @param array<int, HtmlTag|Newline|Regex|Stringable|string> $data
      */
-    public static function new(Newline|Regex|Stringable|string|array $data = ''): self
+    public static function new(HtmlTag|Newline|Regex|Stringable|string|array $data = ''): self
     {
         if (is_array($data)) {
             return new self(self::concatenateFragments($data));
@@ -130,7 +131,7 @@ final class XString implements Stringable
     }
 
     /**
-     * @param array<int, Newline|Regex|Stringable|string> $data
+     * @param array<int, HtmlTag|Newline|Regex|Stringable|string> $data
      */
     public static function implode(array $data, string $glue = ''): self
     {
@@ -143,7 +144,7 @@ final class XString implements Stringable
     }
 
     /**
-     * @param array<int, Newline|Regex|Stringable|string> $data
+     * @param array<int, HtmlTag|Newline|Regex|Stringable|string> $data
      */
     public static function join(array $data, string $glue = ''): self
     {
@@ -199,9 +200,9 @@ final class XString implements Stringable
     }
 
     /**
-     * @param Newline|Regex|Stringable|string|array<int, Newline|Regex|Stringable|string>|null $data
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string>|null $data
      */
-    public function append(Newline|Regex|Stringable|string|array|null $data): self
+    public function append(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
     {
         $additional = is_array($data)
             ? self::concatenateFragments($data)
@@ -211,9 +212,9 @@ final class XString implements Stringable
     }
 
     /**
-     * @param Newline|Regex|Stringable|string|array<int, Newline|Regex|Stringable|string>|null $data
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string>|null $data
      */
-    public function prepend(Newline|Regex|Stringable|string|array|null $data): self
+    public function prepend(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
     {
         $additional = is_array($data)
             ? self::concatenateFragments($data)
@@ -259,7 +260,7 @@ final class XString implements Stringable
     }
 
     /**
-     * @param array<int, Newline|Regex|Stringable|string|null> $data
+     * @param array<int, HtmlTag|Newline|Regex|Stringable|string|null> $data
      */
     private static function concatenateFragments(array $data): string
     {

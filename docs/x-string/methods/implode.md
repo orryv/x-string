@@ -12,7 +12,7 @@
   - [Examples](#examples)
     - [Join fragments without glue](#join-fragments-without-glue)
     - [Join with a custom separator](#join-with-a-custom-separator)
-    - [Join `Newline` instances and strings](#join-newline-instances-and-strings)
+    - [Join `Newline`, `HtmlTag`, and string fragments](#join-newline-htmltag-and-string-fragments)
     - [An empty array results in an empty string](#an-empty-array-results-in-an-empty-string)
     - [Invalid elements trigger an exception](#invalid-elements-trigger-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -32,7 +32,7 @@ public static function implode(array $data, string $glue = ''): self
 ## Description
 
 Combines an array of fragments into a single string, optionally inserting a glue string between each fragment. Each fragment may
-be a plain string or any `Stringable` implementation such as `Newline` or `Regex`. The result is returned in a new immutable
+be a plain string or any `Stringable` implementation such as `Newline`, `HtmlTag`, or `Regex`. The result is returned in a new immutable
 `XString` instance.
 
 **Algorithm overview:**
@@ -44,7 +44,7 @@ be a plain string or any `Stringable` implementation such as `Newline` or `Regex
 
 ## Important notes and considerations
 
-- **Accepts stringables.** Any object implementing `Stringable` (including `Newline` and `Regex`) is accepted.
+- **Accepts stringables.** Any object implementing `Stringable` (including `Newline`, `HtmlTag`, and `Regex`) is accepted.
 - **Immutable result.** The input array is not modified and a brand-new `XString` is returned.
 - **Glue defaults to empty.** When `$glue` is omitted, fragments are concatenated directly.
 
@@ -52,7 +52,7 @@ be a plain string or any `Stringable` implementation such as `Newline` or `Regex
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$data` | — | `array<Newline\|Regex\|Stringable\|string>` | Fragments to join together. Each element must be convertible to string. |
+| `$data` | — | `array<Newline\|HtmlTag\|Regex\|Stringable\|string>` | Fragments to join together. Each element must be convertible to string. |
 | `$glue` | `''` | `string` | Optional separator inserted between fragments. |
 
 ## Returns
@@ -89,10 +89,11 @@ $result = XString::implode(['apples', 'bananas', 'cherries'], ', ');
 #Test: self::assertSame('apples, bananas, cherries', (string) $result);
 ```
 
-### Join `Newline` instances and strings
+### Join `Newline`, `HtmlTag`, and string fragments
 
 <!-- test:implode-with-newline -->
 ```php
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString;
 
@@ -100,11 +101,12 @@ $fragments = [
     'Line 1',
     Newline::new(),
     'Line 2',
+    HtmlTag::new('br', true),
     Newline::new("\r\n"),
     'Line 3',
 ];
 $result = XString::implode($fragments);
-#Test: self::assertSame("Line 1\nLine 2\r\nLine 3", (string) $result);
+#Test: self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
 ```
 
 ### An empty array results in an empty string
@@ -132,4 +134,4 @@ XString::implode(['ok', 123]);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::implode` | `public static function implode(array $data, string $glue = ''): self` — Join fragments (strings or Stringables) with an optional glue. |
+| `XString::implode` | `public static function implode(array $data, string $glue = ''): self` — Join fragments (strings or Stringables, including HtmlTag) with an optional glue. |
