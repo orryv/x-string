@@ -70,7 +70,7 @@ result is returned as a new immutable `XString` instance.
 
 <!-- test:rand-base64-basic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randBase64(24);
 #Test: self::assertSame(24, $token->length());
@@ -81,7 +81,7 @@ $token = XString::randBase64(24);
 
 <!-- test:rand-base64-character-set -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randBase64(8);
 $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -94,7 +94,7 @@ $overlap = strspn((string) $token, $alphabet);
 
 <!-- test:rand-base64-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);

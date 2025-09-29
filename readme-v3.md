@@ -93,7 +93,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`uuid`](docs/x-string/methods/uuid.md) | 1.0 | `public static function uuid(int $version = 4, ?string $namespace = null, ?string $name = null): self`<br>Create a UUID (Universally Unique Identifier) of the specified version (1, 3, 4, or 5). For v3/v5, **$namespace** and **$name** are required and validated. |
 | [`implode`](docs/x-string/methods/implode.md) | 1.0 | `public static function implode(array<Newline\|Regex\|string> $data, string $glue = ''): self`<br>Join array elements into a single string with an optional glue string between elements. |
 | [`join`](docs/x-string/methods/join.md) | 1.0 | `public static function join(array<Newline\|Regex\|string> $data, string $glue = ''): self`<br>Alias for implode(). |
-| [`fromFile`](docs/x-string/methods/from-file.md) | 1.0 | `public static function fromFile(string $file_path, null \| int $length = null, null \| int $offset = 0, string $mode = 'graphemes', string $encoding = 'UTF-8'): self`<br>Create a new instance of XString from the contents of a file. You can specify the length and offset to read from the file, the **mode** (`'bytes'`, `'codepoints'`, `'graphemes'`) and the **encoding**. |
+| [`fromFile`](docs/x-string/methods/fromFile.md) | 1.0 | `public static function fromFile(string $file_path, null \| int $length = null, null \| int $offset = 0, string $encoding = 'UTF-8'): self`<br>Create a new instance of XString from the contents of a file. You can specify the length and offset to read from the file and the **encoding** label. Use `withMode()` afterwards if you need a different logical mode. |
 
 ### Manipulation
 
@@ -101,7 +101,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | --- | --- | --- |
 | [`append`](docs/x-string/methods/append.md) | 1.0 | `public function append(Newline\|Regex\|string\|array<Newline\|Regex\|string> $data): self`<br>Append a string to the end of the current string. |
 | [`prepend`](docs/x-string/methods/prepend.md) | 1.0 | `public function prepend(Newline\|Regex\|string\|array<Newline\|Regex\|string> $data): self`<br>Prepend a string to the beginning of the current string. |
-| [`toUpper`](docs/x-string/methods/to-upper.md) | 1.0 | `public function toUpper(): self`<br>Convert the string to upper case. *(Alias: `toUpperCase()`)* |
+| [`toUpper`](docs/x-string/methods/toUpper.md) | 1.0 | `public function toUpper(): self`<br>Convert the string to upper case. *(Alias: `toUpperCase()`)* |
 | [`toUpperCase`](docs/x-string/methods/to-upper-case.md) | 1.0 | `public function toUpperCase(): self`<br>Alias for `toUpper()`. |
 | [`ucfirst`](docs/x-string/methods/ucfirst.md) | 1.0 | `public function ucfirst(): self`<br>Convert the first character of the string to upper case. |
 | [`lcfirst`](docs/x-string/methods/lcfirst.md) | 1.0 | `public function lcfirst(): self`<br>Convert the first character of the string to lower case. |

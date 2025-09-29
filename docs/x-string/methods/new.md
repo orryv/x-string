@@ -77,7 +77,7 @@ introducing extra separators. When no argument is provided the method yields an 
 
 <!-- test:xstring-new-plain -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $xstring = XString::new('Hello world');
 #Test: self::assertInstanceOf(XString::class, $xstring);
@@ -88,7 +88,7 @@ $xstring = XString::new('Hello world');
 
 <!-- test:xstring-new-array -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $parts = ['Hello', ' ', 'world', '!'];
 $result = XString::new($parts);
@@ -100,7 +100,7 @@ $result = XString::new($parts);
 
 <!-- test:xstring-new-empty -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $xstring = XString::new();
 #Test: self::assertSame('', (string) $xstring);
@@ -110,7 +110,7 @@ $xstring = XString::new();
 
 <!-- test:xstring-new-invalid -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(\InvalidArgumentException::class);
 XString::new(['valid', 123]);

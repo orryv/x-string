@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Orryv\XString\Tests\Docs;
 
 use PHPUnit\Framework\TestCase;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 final class NewTest extends TestCase
 {

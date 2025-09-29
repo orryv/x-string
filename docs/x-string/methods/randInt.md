@@ -77,7 +77,7 @@ Generates a cryptographically secure numeric string where every digit is chosen 
 
 <!-- test:rand-int-default -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $pin = XString::randInt(6);
 #Test: self::assertSame(6, $pin->length());
@@ -88,7 +88,7 @@ $pin = XString::randInt(6);
 
 <!-- test:rand-int-custom-range -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $digits = XString::randInt(8, 3, 7);
 #Test: self::assertSame(8, $digits->length());
@@ -99,7 +99,7 @@ $digits = XString::randInt(8, 3, 7);
 
 <!-- test:rand-int-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);
@@ -110,7 +110,7 @@ XString::randInt(0);
 
 <!-- test:rand-int-invalid-range -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(\InvalidArgumentException::class);
 XString::randInt(4, 9, 3);

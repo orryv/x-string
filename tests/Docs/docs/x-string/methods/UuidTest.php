@@ -6,7 +6,7 @@ namespace Orryv\XString\Tests\Docs;
 
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 final class UuidTest extends TestCase
 {

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Orryv\XString\Tests\Docs;
 
 use PHPUnit\Framework\TestCase;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
-use Orryv\XString\XString;
 
 final class RandAlphaTest extends TestCase
 {
