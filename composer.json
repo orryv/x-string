@@ -1,0 +1,38 @@
+{
+    "name": "orryv/x-string",
+    "description": "Toolkit for validating and restructuring JSON API responses using schema pipelines.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "psr/log": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Orryv\\": "src/",
+            "Orryv\\XArray\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Orryv\\XArray\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+
+    },
+    "scripts": {
+        "test": [
+            "@php vendor/bin/phpunit"
+        ],
+        "test:unit": "@php vendor/bin/phpunit --testsuite=unit",
+        "test:integration": "@php vendor/bin/phpunit --testsuite=integration",
+        "test:docs": "@php vendor/bin/phpunit --testsuite=docs",
+        "test:coverage": "@php vendor/bin/phpunit --coverage-text",
+        "compose-docs-tests": "@php tests/ComposeDocTests.php"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
