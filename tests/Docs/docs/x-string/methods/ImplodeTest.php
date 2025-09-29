@@ -7,6 +7,7 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 
 final class ImplodeTest extends TestCase
@@ -29,11 +30,12 @@ final class ImplodeTest extends TestCase
             'Line 1',
             Newline::new(),
             'Line 2',
+            HtmlTag::new('br', true),
             Newline::new("\r\n"),
             'Line 3',
         ];
         $result = XString::implode($fragments);
-        self::assertSame("Line 1\nLine 2\r\nLine 3", (string) $result);
+        self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
     }
 
     public function testImplodeEmpty(): void

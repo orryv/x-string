@@ -97,7 +97,7 @@ $updated = $original->append([
     HtmlTag::new('span')->withClass('highlight'),
     Regex::new('/[a-z]+/i'),
 ]);
-#Test: self::assertSame("Pattern\n<span class=\"highlight\"></span>/[a-z]+/i", (string) $updated);
+#Test: self::assertSame("Pattern\n<span class=\"highlight\">/[a-z]+/i", (string) $updated);
 ```
 
 ### Original instance remains unchanged

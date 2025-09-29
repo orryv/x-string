@@ -7,6 +7,7 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
 use stdClass;
@@ -31,10 +32,11 @@ final class PrependTest extends TestCase
     {
         $original = XString::new('Content');
         $updated = $original->prepend([
+            HtmlTag::new('section')->withId('intro'),
             Regex::new('/^Title:/'),
             Newline::new(),
         ]);
-        self::assertSame("/^Title:/\nContent", (string) $updated);
+        self::assertSame("<section id=\"intro\">/^Title:/\nContent", (string) $updated);
     }
 
     public function testPrependImmutability(): void

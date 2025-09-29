@@ -7,6 +7,7 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 
 final class JoinTest extends TestCase
@@ -31,11 +32,12 @@ final class JoinTest extends TestCase
             'Line 1',
             Newline::new(),
             'Line 2',
+            HtmlTag::new('br', true),
             Newline::new("\r\n"),
             'Line 3',
         ];
         $result = XString::join($parts);
-        self::assertSame("Line 1\nLine 2\r\nLine 3", (string) $result);
+        self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
     }
 
     public function testJoinEmpty(): void

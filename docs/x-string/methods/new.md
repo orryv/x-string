@@ -102,9 +102,9 @@ $result = XString::new($parts);
 
 <!-- test:xstring-new-html-tag -->
 ```php
-use Orryv\\XString;
-use Orryv\\XString\\HtmlTag;
-use Orryv\\XString\\Newline;
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
 
 $fragments = [
     HtmlTag::new('p')->withClass(['intro', 'lead']),
@@ -113,7 +113,7 @@ $fragments = [
     HtmlTag::closeTag('p'),
 ];
 $result = XString::new($fragments);
-#Test: self::assertSame('<p class=\"intro lead\">Hello\n</p>', (string) $result);
+#Test: self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
 ```
 ### Empty input defaults to an empty string
 
