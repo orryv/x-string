@@ -72,10 +72,10 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`rand`](docs/x-string/methods/rand.md) | 1.0 | `public static function rand(int $length, Newline\|Regex\|Multibyte\|Grapheme\|string $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'): self`<br>Create a random string of a given length using the provided characters. |
-| [`randNumber`](docs/x-string/methods/rand-int.md) | 1.0 | `public static function randInt(int $length, int $int_min = 0, int $int_max = 9): self`<br>Create a random integer between the specified minimum and maximum values (inclusive). |
-| [`randLower`](docs/x-string/methods/rand-lower.md) | 1.0 | `public static function randLower(int $length, $include_numbers = false): self`<br>Create a random lowercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
-| [`randUpper`](docs/x-string/methods/rand-upper.md) | 1.0 | `public static function randUpper(int $length, $include_numbers = false): self`<br>Create a random uppercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
-| [`randAlpha`](docs/x-string/methods/rand-alpha.md) | 1.0 | `public static function randAlpha(int $length): self`<br>Create a random alphabetic string of a given length (both uppercase and lowercase). |
+| [`randNumber`](docs/x-string/methods/randInt.md) | 1.0 | `public static function randInt(int $length, int $int_min = 0, int $int_max = 9): self`<br>Create a random integer between the specified minimum and maximum values (inclusive). |
+| [`randLower`](docs/x-string/methods/randLower.md) | 1.0 | `public static function randLower(int $length, $include_numbers = false): self`<br>Create a random lowercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
+| [`randUpper`](docs/x-string/methods/randUpper.md) | 1.0 | `public static function randUpper(int $length, $include_numbers = false): self`<br>Create a random uppercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
+| [`randAlpha`](docs/x-string/methods/randAlpha.md) | 1.0 | `public static function randAlpha(int $length): self`<br>Create a random alphabetic string of a given length (both uppercase and lowercase). |
 | [`randHex`](docs/x-string/methods/rand-hex.md) | 1.0 | `public static function randHex(int $length): self`<br>Create a random hexadecimal string of a given length. |
 | [`randBase64`](docs/x-string/methods/rand-base64.md) | 1.0 | `public static function randBase64(int $length): self`<br>Create a random Base64 string of a given length. |
 | [`randBase62`](docs/x-string/methods/rand-base62.md) | 1.0 | `public static function randBase62(int $length): self`<br>Create a random Base62 string of a given length. |
