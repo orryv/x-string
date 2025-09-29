@@ -6,8 +6,8 @@ namespace Orryv\XString\Tests\Docs;
 
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
+use Orryv\XString;
 use Orryv\XString\Newline;
-use Orryv\XString\XString;
 
 final class ImplodeTest extends TestCase
 {

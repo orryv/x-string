@@ -70,7 +70,7 @@ immutable `XString` instance.
 
 <!-- test:rand-hex-basic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randHex(32);
 #Test: self::assertSame(32, $token->length());
@@ -81,7 +81,7 @@ $token = XString::randHex(32);
 
 <!-- test:rand-hex-hex2bin -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randHex(16);
 $bytes = hex2bin((string) $token);
@@ -94,7 +94,7 @@ $bytes = hex2bin((string) $token);
 
 <!-- test:rand-hex-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);

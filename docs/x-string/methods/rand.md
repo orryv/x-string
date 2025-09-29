@@ -78,7 +78,7 @@ Generates a cryptographically secure random string of the requested length using
 
 <!-- test:rand-abcdef -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $x = XString::rand(10, 'abcdef');
 #Test: self::assertEquals(10, $x->length());
@@ -89,7 +89,7 @@ $x = XString::rand(10, 'abcdef');
 
 <!-- test:rand-default -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $x = XString::rand(15);
 #Test: self::assertEquals(15, $x->length());

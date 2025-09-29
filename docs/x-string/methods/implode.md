@@ -73,7 +73,7 @@ be a plain string or any `Stringable` implementation such as `Newline` or `Regex
 
 <!-- test:implode-no-glue -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $result = XString::implode(['foo', 'bar', 'baz']);
 #Test: self::assertSame('foobarbaz', (string) $result);
@@ -83,7 +83,7 @@ $result = XString::implode(['foo', 'bar', 'baz']);
 
 <!-- test:implode-with-glue -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $result = XString::implode(['apples', 'bananas', 'cherries'], ', ');
 #Test: self::assertSame('apples, bananas, cherries', (string) $result);
@@ -94,7 +94,7 @@ $result = XString::implode(['apples', 'bananas', 'cherries'], ', ');
 <!-- test:implode-with-newline -->
 ```php
 use Orryv\XString\Newline;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $fragments = [
     'Line 1',
@@ -111,7 +111,7 @@ $result = XString::implode($fragments);
 
 <!-- test:implode-empty -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $result = XString::implode([]);
 #Test: self::assertSame('', (string) $result);
@@ -122,7 +122,7 @@ $result = XString::implode([]);
 <!-- test:implode-invalid-fragment -->
 ```php
 use InvalidArgumentException;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(InvalidArgumentException::class);
 XString::implode(['ok', 123]);

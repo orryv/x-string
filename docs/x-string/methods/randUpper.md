@@ -73,7 +73,7 @@ wrapped in a new immutable `XString` instance.
 
 <!-- test:rand-upper-basic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randUpper(10);
 #Test: self::assertSame(10, $token->length());
@@ -84,7 +84,7 @@ $token = XString::randUpper(10);
 
 <!-- test:rand-upper-with-digits -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randUpper(14, true);
 #Test: self::assertSame(14, $token->length());
@@ -95,7 +95,7 @@ $token = XString::randUpper(14, true);
 
 <!-- test:rand-upper-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);

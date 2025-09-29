@@ -69,7 +69,7 @@ Generates a cryptographically secure random alphabetic string by sampling unifor
 
 <!-- test:rand-alpha-basic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randAlpha(20);
 #Test: self::assertSame(20, $token->length());
@@ -80,7 +80,7 @@ $token = XString::randAlpha(20);
 
 <!-- test:rand-alpha-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);

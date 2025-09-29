@@ -2,36 +2,41 @@
 
 declare(strict_types=1);
 
-namespace Orryv\XString;
+namespace Orryv;
 
 use InvalidArgumentException;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
 use Orryv\XString\Exceptions\EmptyCharacterSetException;
 use Orryv\XString\Exceptions\InvalidLengthException;
+use RuntimeException;
 use Stringable;
 
 final class XString implements Stringable
 {
     private const DEFAULT_ENCODING = 'UTF-8';
+    private const DEFAULT_MODE = 'graphemes';
+    /** @var array<int, string> */
+    private const VALID_MODES = ['bytes', 'codepoints', 'graphemes'];
 
     private string $value;
+    private string $mode;
+    private string $encoding;
 
-    private function __construct(string $value)
+    private function __construct(string $value, string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING)
     {
         $this->value = $value;
+        $this->mode = self::normalizeMode($mode);
+        $this->encoding = self::normalizeEncoding($encoding);
     }
 
     /**
      * @param array<int, Newline|Regex|Stringable|string> $data
      */
-    public static function new(Newline|Regex|string|array $data = ''): self
+    public static function new(Newline|Regex|Stringable|string|array $data = ''): self
     {
         if (is_array($data)) {
-            $fragments = [];
-            foreach ($data as $fragment) {
-                $fragments[] = self::normalizeFragment($fragment);
-            }
-
-            return new self(implode('', $fragments));
+            return new self(self::concatenateFragments($data));
         }
 
         return new self(self::normalizeFragment($data));
@@ -137,13 +142,98 @@ final class XString implements Stringable
         return new self(implode($glue, $normalized));
     }
 
-    public function length(): int
+    /**
+     * @param array<int, Newline|Regex|Stringable|string> $data
+     */
+    public static function join(array $data, string $glue = ''): self
     {
-        if (function_exists('mb_strlen')) {
-            return mb_strlen($this->value, self::DEFAULT_ENCODING);
+        return self::implode($data, $glue);
+    }
+
+    public static function fromFile(
+        string $file_path,
+        ?int $length = null,
+        ?int $offset = 0,
+        string $encoding = self::DEFAULT_ENCODING
+    ): self {
+        if (!is_file($file_path) || !is_readable($file_path)) {
+            throw new RuntimeException(sprintf('File "%s" is not readable.', $file_path));
         }
 
-        return strlen($this->value);
+        $offset = $offset ?? 0;
+        if ($offset < 0) {
+            throw new InvalidArgumentException('Offset must be greater than or equal to 0.');
+        }
+
+        if ($length !== null && $length < 0) {
+            throw new InvalidArgumentException('Length must be greater than or equal to 0.');
+        }
+
+        $encoding = self::normalizeEncoding($encoding);
+
+        $content = $length === null
+            ? file_get_contents($file_path, false, null, $offset)
+            : file_get_contents($file_path, false, null, $offset, $length);
+
+        if ($content === false) {
+            throw new RuntimeException(sprintf('Failed to read file "%s".', $file_path));
+        }
+
+        return new self($content, self::DEFAULT_MODE, $encoding);
+    }
+
+    public function length(): int
+    {
+        return match ($this->mode) {
+            'bytes' => strlen($this->value),
+            'codepoints' => function_exists('mb_strlen')
+                ? mb_strlen($this->value, $this->encoding)
+                : strlen($this->value),
+            default => $this->graphemeLengthOrFallback(),
+        };
+    }
+
+    public function withMode(string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING): self
+    {
+        return new self($this->value, $mode, $encoding);
+    }
+
+    /**
+     * @param Newline|Regex|Stringable|string|array<int, Newline|Regex|Stringable|string>|null $data
+     */
+    public function append(Newline|Regex|Stringable|string|array|null $data): self
+    {
+        $additional = is_array($data)
+            ? self::concatenateFragments($data)
+            : self::normalizeFragment($data);
+
+        return new self($this->value . $additional, $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param Newline|Regex|Stringable|string|array<int, Newline|Regex|Stringable|string>|null $data
+     */
+    public function prepend(Newline|Regex|Stringable|string|array|null $data): self
+    {
+        $additional = is_array($data)
+            ? self::concatenateFragments($data)
+            : self::normalizeFragment($data);
+
+        return new self($additional . $this->value, $this->mode, $this->encoding);
+    }
+
+    public function toUpper(): self
+    {
+        $upper = function_exists('mb_strtoupper')
+            ? mb_strtoupper($this->value, $this->encoding)
+            : strtoupper($this->value);
+
+        return new self($upper, $this->mode, $this->encoding);
+    }
+
+    public function toUpperCase(): self
+    {
+        return $this->toUpper();
     }
 
     public function __toString(): string
@@ -169,6 +259,19 @@ final class XString implements Stringable
     }
 
     /**
+     * @param array<int, Newline|Regex|Stringable|string|null> $data
+     */
+    private static function concatenateFragments(array $data): string
+    {
+        $fragments = [];
+        foreach ($data as $fragment) {
+            $fragments[] = self::normalizeFragment($fragment);
+        }
+
+        return implode('', $fragments);
+    }
+
+    /**
      * @return array<int, string>
      */
     private static function splitCharacters(string $characters): array
@@ -185,6 +288,42 @@ final class XString implements Stringable
         }
 
         return str_split($characters);
+    }
+
+    private static function normalizeMode(string $mode): string
+    {
+        $normalized = strtolower($mode);
+        if (!in_array($normalized, self::VALID_MODES, true)) {
+            throw new InvalidArgumentException('Invalid mode provided.');
+        }
+
+        return $normalized;
+    }
+
+    private static function normalizeEncoding(string $encoding): string
+    {
+        $normalized = trim($encoding);
+        if ($normalized === '') {
+            throw new InvalidArgumentException('Encoding cannot be empty.');
+        }
+
+        return $normalized;
+    }
+
+    private function graphemeLengthOrFallback(): int
+    {
+        if (function_exists('grapheme_strlen')) {
+            $length = grapheme_strlen($this->value);
+            if ($length !== false) {
+                return $length;
+            }
+        }
+
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($this->value, $this->encoding);
+        }
+
+        return strlen($this->value);
     }
 
     private static function generateUuid(int $version, ?string $namespace, ?string $name): string

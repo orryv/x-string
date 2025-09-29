@@ -69,7 +69,7 @@ uniformly and the resulting text is wrapped in a new immutable `XString` instanc
 
 <!-- test:rand-base62-basic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randBase62(20);
 #Test: self::assertSame(20, $token->length());
@@ -80,7 +80,7 @@ $token = XString::randBase62(20);
 
 <!-- test:rand-base62-character-diversity -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $token = XString::randBase62(60);
 $characters = str_split((string) $token);
@@ -93,7 +93,7 @@ $characters = str_split((string) $token);
 
 <!-- test:rand-base62-invalid-length -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 use Orryv\XString\Exceptions\InvalidLengthException;
 
 #Test: $this->expectException(InvalidLengthException::class);

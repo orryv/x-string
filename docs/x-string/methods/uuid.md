@@ -84,7 +84,7 @@ a different UUID each call.
 
 <!-- test:uuid-v4 -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $uuid = XString::uuid();
 #Test: self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) $uuid);
@@ -94,7 +94,7 @@ $uuid = XString::uuid();
 
 <!-- test:uuid-v1 -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $uuid = XString::uuid(1);
 #Test: self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-1[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) $uuid);
@@ -105,7 +105,7 @@ $uuid = XString::uuid(1);
 
 <!-- test:uuid-v3-deterministic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace
 $first = XString::uuid(3, $namespace, 'example.com');
@@ -118,7 +118,7 @@ $second = XString::uuid(3, $namespace, 'example.com');
 
 <!-- test:uuid-v5-deterministic -->
 ```php
-use Orryv\XString\XString;
+use Orryv\XString;
 
 $namespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace
 $uuid = XString::uuid(5, $namespace, 'example.com');
@@ -130,7 +130,7 @@ $uuid = XString::uuid(5, $namespace, 'example.com');
 <!-- test:uuid-missing-namespace -->
 ```php
 use InvalidArgumentException;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(InvalidArgumentException::class);
 XString::uuid(3, null, 'name');
@@ -141,7 +141,7 @@ XString::uuid(3, null, 'name');
 <!-- test:uuid-invalid-namespace -->
 ```php
 use InvalidArgumentException;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(InvalidArgumentException::class);
 XString::uuid(5, 'not-a-uuid', 'name');
@@ -152,7 +152,7 @@ XString::uuid(5, 'not-a-uuid', 'name');
 <!-- test:uuid-invalid-version -->
 ```php
 use InvalidArgumentException;
-use Orryv\XString\XString;
+use Orryv\XString;
 
 #Test: $this->expectException(InvalidArgumentException::class);
 XString::uuid(2);
