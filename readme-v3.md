@@ -87,9 +87,9 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`randLower`](docs/x-string/methods/randLower.md) | 1.0 | `public static function randLower(int $length, bool $include_numbers = false): self`<br>Create a random lowercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
 | [`randUpper`](docs/x-string/methods/randUpper.md) | 1.0 | `public static function randUpper(int $length, bool $include_numbers = false): self`<br>Create a random uppercase string of a given length. If $include_numbers is true, numbers will be included in the string. |
 | [`randAlpha`](docs/x-string/methods/randAlpha.md) | 1.0 | `public static function randAlpha(int $length): self`<br>Create a random alphabetic string of a given length (both uppercase and lowercase). |
-| [`randHex`](docs/x-string/methods/rand-hex.md) | 1.0 | `public static function randHex(int $length): self`<br>Create a random hexadecimal string of a given length. |
-| [`randBase64`](docs/x-string/methods/rand-base64.md) | 1.0 | `public static function randBase64(int $length): self`<br>Create a random Base64 string of a given length. |
-| [`randBase62`](docs/x-string/methods/rand-base62.md) | 1.0 | `public static function randBase62(int $length): self`<br>Create a random Base62 string of a given length. |
+| [`randHex`](docs/x-string/methods/randHex.md) | 1.0 | `public static function randHex(int $length): self`<br>Create a random hexadecimal string of a given length. |
+| [`randBase64`](docs/x-string/methods/randBase64.md) | 1.0 | `public static function randBase64(int $length): self`<br>Create a random Base64 string of a given length. |
+| [`randBase62`](docs/x-string/methods/randBase62.md) | 1.0 | `public static function randBase62(int $length): self`<br>Create a random Base62 string of a given length. |
 | [`uuid`](docs/x-string/methods/uuid.md) | 1.0 | `public static function uuid(int $version = 4, ?string $namespace = null, ?string $name = null): self`<br>Create a UUID (Universally Unique Identifier) of the specified version (1, 3, 4, or 5). For v3/v5, **$namespace** and **$name** are required and validated. |
 | [`implode`](docs/x-string/methods/implode.md) | 1.0 | `public static function implode(array<Newline\|Regex\|string> $data, string $glue = ''): self`<br>Join array elements into a single string with an optional glue string between elements. |
 | [`join`](docs/x-string/methods/join.md) | 1.0 | `public static function join(array<Newline\|Regex\|string> $data, string $glue = ''): self`<br>Alias for implode(). |
