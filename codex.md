@@ -27,6 +27,8 @@ Code blocks prepended with <!-- test:*test-name* --> are examples which are also
 
 When no documentation file exists yet, you'll have to create it. You can find other docs files in the docs/ folder to use as reference for the layout. You can find information about the method itself in readme-v3.md (other readme's are outdated). The info in that readme should be close to finished/without issues, but always think about if something is missing or incorrect.
 
+If the current method must do tests which depends on other methods/classes/functionalities (ex. Newline and Regex class), you must first create them (the code and the docs/tests) before you can create the docs/tests for the current method. You should find documentation about these other methods/classes/functionalities in the main readme-v3.md file or the docs/ folder. If you can't find any documentation about them, ask me for help.
+
 1a. Check the existing documentation and update if some mistakes are made.
 1b. Think about if all exceptions are included in the "Thrown exceptions" section.
 2. Think about more tests/examples (important, relevant and/or useful ones, test exceptions and edge cases too,) that could be added to the docs. And add them. Some tests may be about (not limited to):
