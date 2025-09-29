@@ -75,6 +75,9 @@ A class to manipulate strings. Uses __toString() to convert to string when neede
 | --- | --- | --- |
 | [`new`](docs/x-string/methods/new.md) | 1.0 | `public static function new(Newline\|Regex\|string\|array<Newline\|Regex\|string> $data = ''): self`<br>Create a new instance of XString. You can provide a string, an array of strings, a Newline object, or a Regex object. If an array is provided, it will be joined into a single string. If no data is provided, it defaults to an empty string. |
 | [`withMode`](docs/x-string/methods/with-mode.md) | 1.0 | `public function withMode(string $mode = 'graphemes', string $encoding = 'UTF-8'): self`<br>Create a new instance of XString with the specified **mode** (`'bytes'`, `'codepoints'`, or `'graphemes'`) and **encoding** (default `'UTF-8'`). |
+| [`asBytes`](docs/x-string/methods/as-bytes.md) | 1.0 | `public function asBytes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('bytes', $encoding)`. |
+| [`asCodepoints`](docs/x-string/methods/as-codepoints.md) | 1.0 | `public function asCodepoints(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('codepoints', $encoding)`. |
+| [`asGraphemes`](docs/x-string/methods/as-graphemes.md) | 1.0 | `public function asGraphemes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('graphemes', $encoding)`. |
 
 ### Generation
 
@@ -224,7 +227,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`br2nl`](docs/x-string/methods/br2nl.md) | 1.0 | `public function br2nl(): self`<br>Convert HTML `<br>` tags to newlines. |
 
 
-## Newline class methods (all static)
+## Newline class methods
 
 Used to tell search arguments in other methods that you want to search for newlines.
 
@@ -250,6 +253,10 @@ Used to tell search arguments in other methods that you want to search for a reg
 | --- | --- | --- |
 | [`XStringType::newline()`](docs/x-string-type/methods/newline.md) | 1.0 | `public static function newline(null\|string $newline = null): Newline`<br>Create a new Newline instance. Default newline is *any*. |
 | [`XStringType::regex()`](docs/x-string-type/methods/regex.md) | 1.0 | `public static function regex(string $pattern, int $modifiers = 0): Regex`<br>Create a new Regex instance. $modifiers is a bitmask of regex modifiers (ex. Pattern::MODIFIER_CASE_INSENSITIVE). |
+
+## HtmlTag class methods (all static)
+
+// TODO: implement
 
 # Examples
 
