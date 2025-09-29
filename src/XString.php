@@ -237,6 +237,74 @@ final class XString implements Stringable
         return $this->toUpper();
     }
 
+    public function toLower(): self
+    {
+        if (function_exists('mb_convert_case')) {
+            $lower = mb_convert_case($this->value, MB_CASE_LOWER_SIMPLE, $this->encoding);
+        } elseif (function_exists('mb_strtolower')) {
+            $lower = mb_strtolower($this->value, $this->encoding);
+        } else {
+            $lower = strtolower($this->value);
+        }
+
+        return new self($lower, $this->mode, $this->encoding);
+    }
+
+    public function toLowerCase(): self
+    {
+        return $this->toLower();
+    }
+
+    public function ucfirst(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        if (function_exists('mb_substr')) {
+            $first = mb_substr($this->value, 0, 1, $this->encoding);
+            $rest = mb_substr($this->value, 1, null, $this->encoding);
+
+            if ($first !== false && $rest !== false) {
+                $upperFirst = function_exists('mb_strtoupper')
+                    ? mb_strtoupper($first, $this->encoding)
+                    : strtoupper($first);
+
+                return new self($upperFirst . $rest, $this->mode, $this->encoding);
+            }
+        }
+
+        $first = substr($this->value, 0, 1);
+        $rest = substr($this->value, 1);
+
+        return new self(strtoupper($first) . $rest, $this->mode, $this->encoding);
+    }
+
+    public function lcfirst(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        if (function_exists('mb_substr')) {
+            $first = mb_substr($this->value, 0, 1, $this->encoding);
+            $rest = mb_substr($this->value, 1, null, $this->encoding);
+
+            if ($first !== false && $rest !== false) {
+                $lowerFirst = function_exists('mb_strtolower')
+                    ? mb_strtolower($first, $this->encoding)
+                    : strtolower($first);
+
+                return new self($lowerFirst . $rest, $this->mode, $this->encoding);
+            }
+        }
+
+        $first = substr($this->value, 0, 1);
+        $rest = substr($this->value, 1);
+
+        return new self(strtolower($first) . $rest, $this->mode, $this->encoding);
+    }
+
     public function __toString(): string
     {
         return $this->value;

@@ -33,7 +33,7 @@ public function toUpper(): self
 
 Returns a new immutable `XString` whose contents are converted to uppercase. The conversion respects the instance's current
 encoding and mode, using `mb_strtoupper()` when available to correctly handle multibyte characters and falling back to
-`strtoupper()` otherwise. The alias [`toUpperCase()`](./to-upper-case.md) simply calls this method.
+`strtoupper()` otherwise. The alias [`toUpperCase()`](./toUpperCase.md) simply calls this method.
 
 ## Important notes and considerations
 

@@ -90,10 +90,12 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | --- | --- | --- |
 | [`append`](docs/x-string/methods/append.md) | 1.0 | `public function append(Newline\|Regex\|Multibyte\|Grapheme\|string\|array<Newline\|Regex\|Multibyte\|Grapheme\|string> $data): self`<br>Append a string to the end of the current string. |
 | [`prepend`](docs/x-string/methods/prepend.md) | 1.0 | `public function prepend(Newline\|Regex\|Multibyte\|Grapheme\|string\|array<Newline\|Regex\|Multibyte\|Grapheme\|string> $data): self`<br>Prepend a string to the beginning of the current string. |
-| [`toUpper`](docs/x-string/methods/to-upper.md) | 1.0 | `public function toUpperCase(): self`<br>Convert the string to upper case. |
+| [`toUpper`](docs/x-string/methods/toUpper.md) | 1.0 | `public function toUpper(): self`<br>Convert the string to upper case. *(Alias: `toUpperCase()`)* |
+| [`toUpperCase`](docs/x-string/methods/toUpperCase.md) | 1.0 | `public function toUpperCase(): self`<br>Alias for `toUpper()`. |
 | [`ucfirst`](docs/x-string/methods/ucfirst.md) | 1.0 | `public function ucfirst(): self`<br>Convert the first character of the string to upper case. |
 | [`lcfirst`](docs/x-string/methods/lcfirst.md) | 1.0 | `public function lcfirst(): self`<br>Convert the first character of the string to lower case. |
-| [`toLower`](docs/x-string/methods/to-lower.md) | 1.0 | `public function toLowerCase(): self`<br>Convert the string to lower case. |
+| [`toLower`](docs/x-string/methods/toLower.md) | 1.0 | `public function toLower(): self`<br>Convert the string to lower case. *(Alias: `toLowerCase()`)* |
+| [`toLowerCase`](docs/x-string/methods/toLowerCase.md) | 1.0 | `public function toLowerCase(): self`<br>Alias for `toLower()`. |
 | [`trim`](docs/x-string/methods/trim.md) | 1.0 | `public function trim($newline = true, $space = true, $tab = true): self`<br>Trim the string. By default it trims newlines, spaces and tabs. You can disable trimming of any of these by setting the relevant parameter to false. |
 | [`ltrim`](docs/x-string/methods/ltrim.md) | 1.0 | `public function ltrim($newline = true, $space = true, $tab = true): self`<br>Left trim the string. By default it trims newlines, spaces and tabs. You can disable trimming of any of these by setting the relevant parameter to false. |
 | [`rtrim`](docs/x-string/methods/rtrim.md) | 1.0 | `public function rtrim($newline = true, $space = true, $tab = true): self`<br>Right trim the string. By default it trims newlines, spaces and tabs. You can disable trimming of any of these by setting the relevant parameter to false. |

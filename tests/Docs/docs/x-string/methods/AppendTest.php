@@ -7,6 +7,7 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
 use stdClass;
@@ -32,9 +33,10 @@ final class AppendTest extends TestCase
         $original = XString::new('Pattern');
         $updated = $original->append([
             Newline::new(),
+            HtmlTag::new('span')->withClass('highlight'),
             Regex::new('/[a-z]+/i'),
         ]);
-        self::assertSame("Pattern\n/[a-z]+/i", (string) $updated);
+        self::assertSame("Pattern\n<span class=\"highlight\">/[a-z]+/i", (string) $updated);
     }
 
     public function testAppendImmutability(): void
