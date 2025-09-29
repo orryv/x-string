@@ -30,7 +30,7 @@ When no documentation file exists yet, you'll have to create it. You can find ot
 1a. Check the existing documentation and update if some mistakes are made.
 1b. Think about if all exceptions are included in the "Thrown exceptions" section.
 2. Think about more tests/examples (important, relevant and/or useful ones, test exceptions and edge cases too,) that could be added to the docs. And add them. Some tests may be about (not limited to):
-  - using different modes (fromMode(): Byte, Multibyte, Grapheme) (min 1 test per mode if relevant)
+  - using different modes (withMode(): Byte, Multibyte, Grapheme) (min 1 test per mode if relevant)
   - edge cases (min 1 test if relevant)
   - exceptions (min 1 test per exception)
   - immutability (original remains unchanged) or mutability (original is changed) (min 1 test)
