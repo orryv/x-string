@@ -17,7 +17,7 @@ so in rare cases where you need to fix a test, you should fix the code snippet i
 ```
 run `compose-docs-tests` (this runs the script that generates tests from the docs), but for now look at the output of that script.
 
-Then apply the following for the first 5 methods where 0 tests are found (or the doc file is not found) which is shown in the output of `compose-docs-tests`, so apply this for each method:
+Then apply the following for the first 6 methods where 0 tests are found (or the doc file is not found) which is shown in the output of `compose-docs-tests`, so apply this for each method:
 
 -----
 The current documentation is about a method/function/class.
