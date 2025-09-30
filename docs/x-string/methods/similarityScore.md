@@ -306,4 +306,4 @@ $score = XString::new('function similarityScore')->similarityScore('function sim
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::similarityScore` | `public function similarityScore(Newline|HtmlTag|Regex|string $comparison, string $algorithm = 'github-style', array $options = []): float` — Compute a normalized similarity ratio between this string and another using the selected fuzzy-matching algorithm. |
+| `XString::similarityScore` | `public function similarityScore(Newline\|HtmlTag\|Regex\|string $comparison, string $algorithm = 'github-style', array $options = []): float` — Compute a normalized similarity ratio between this string and another using the selected fuzzy-matching algorithm. |
