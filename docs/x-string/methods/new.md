@@ -13,6 +13,7 @@
     - [Create from a plain string](#create-from-a-plain-string)
     - [Combine array values without mutating the source](#combine-array-values-without-mutating-the-source)
     - [Combine adapters, including HtmlTag](#combine-adapters-including-htmltag)
+    - [Combine adapters, including HtmlTag with end Tag](#combine-adapters-including-htmltag-with-end-tag)
     - [Empty input defaults to an empty string](#empty-input-defaults-to-an-empty-string)
     - [Unsupported data in the array raises an exception](#unsupported-data-in-the-array-raises-an-exception)
   - [One-line API table entry](#one-line-api-table-entry)
@@ -115,6 +116,22 @@ $fragments = [
 $result = XString::new($fragments);
 #Test: self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
 ```
+
+### Combine adapters, including HtmlTag with end tag support
+
+<!-- test:xstring-new-html-tag -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+
+$fragment = HtmlTag::new('p')
+    ->withClass(['intro', 'lead'])
+    ->withBody('Hello')
+    ->withEndTag();
+$result = XString::new($fragment);
+#Test: self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
+```
+
 ### Empty input defaults to an empty string
 
 <!-- test:xstring-new-empty -->

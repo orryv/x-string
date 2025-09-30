@@ -28,13 +28,11 @@ final class NewTest extends TestCase
 
     public function testXstringNewHtmlTag(): void
     {
-        $fragments = [
-            HtmlTag::new('p')->withClass(['intro', 'lead']),
-            'Hello',
-            Newline::new(),
-            HtmlTag::closeTag('p'),
-        ];
-        $result = XString::new($fragments);
+        $fragment =HtmlTag::new('p')
+              ->withClass(['intro', 'lead'])
+              ->withBody('Hello')
+              ->withEndTag();
+        $result = XString::new($fragment);
         self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
     }
 

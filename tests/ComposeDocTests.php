@@ -179,7 +179,7 @@ function composeTestFile(array $data, string $doc_path, string $method): void
         return;
     }
 
-    $path = substr($doc_path, 0, strlen($doc_path) - strlen(basename($doc_path)));
+    $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
     // first character to upper
     $name = ucfirst($name);
 

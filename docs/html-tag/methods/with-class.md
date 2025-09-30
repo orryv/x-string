@@ -19,7 +19,7 @@
 **Signature:**
 
 ```php
-public function withClass(string|array $class_name): self
+public function withClass(string|array ...$class_name): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -28,8 +28,9 @@ public function withClass(string|array $class_name): self
 
 ## Description
 
-Return a clone of the current `HtmlTag` with one or more CSS class names added. String input is split on whitespace, while array
-input is treated as a list of individual class names.
+Return a clone of the current `HtmlTag` with one or more CSS class names added. Provide classes as individual string arguments,
+arrays, or a combination of both; string input is split on whitespace, while array input is treated as a list of individual
+class names.
 
 ## Important notes and considerations
 
@@ -41,7 +42,7 @@ input is treated as a list of individual class names.
 
 | Parameter | Default | Type | Description |
 | --- | --- | --- | --- |
-| `$class_name` | — | `string\|array<int, string>` | Class or classes to append. Strings are split on whitespace; arrays are treated as lists. |
+| `$class_name` | — | `string\|array<int, string> ...` | One or more arguments describing the classes to append. Strings are split on whitespace; arrays are treated as lists. |
 
 ## Returns
 
@@ -73,7 +74,7 @@ $tag = HtmlTag::new('section')->withClass('hero');
 ```php
 use Orryv\XString\HtmlTag;
 
-$tag = HtmlTag::new('p')->withClass(['intro', 'lead'])->withClass('intro highlight');
+$tag = HtmlTag::new('p')->withClass(['intro', 'lead'], 'highlight');
 #Test: self::assertSame('<p class="intro lead highlight">', (string) $tag);
 ```
 
@@ -81,4 +82,4 @@ $tag = HtmlTag::new('p')->withClass(['intro', 'lead'])->withClass('intro highlig
 
 | Method | Signature & Description |
 | --- | --- |
-| `HtmlTag::withClass` | `public function withClass(string|array $class_name): self` — Return a clone with the provided CSS classes applied. |
+| `HtmlTag::withClass` | `public function withClass(string|array ...$class_name): self` — Return a clone with the provided CSS classes applied. |
