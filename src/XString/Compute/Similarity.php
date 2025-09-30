@@ -323,9 +323,9 @@ final class Similarity
             return [];
         }
 
-        if ($options['tokenizer'] !== null) {
+        $tokenizer = $options['tokenizer'] ?? null;
+        if ($tokenizer !== null) {
             /** @var callable $tokenizer */
-            $tokenizer = $options['tokenizer'];
             $tokens = $tokenizer($value, $options);
             if (!is_array($tokens)) {
                 throw new InvalidArgumentException('Custom tokenizer must return an array.');
