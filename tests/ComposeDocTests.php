@@ -183,6 +183,23 @@ function composeTestFile(array $data, string $doc_path, string $method): void
     // first character to upper
     $name = ucfirst($name);
 
+    $namespace_segments = [];
+    $trimmed_path = trim($path, '/');
+    if ($trimmed_path !== '') {
+        foreach (explode('/', $trimmed_path) as $segment) {
+            if ($segment === '') {
+                continue;
+            }
+
+            $namespace_segments[] = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $segment)));
+        }
+    }
+
+    $namespace = $base_namespace . '\\Tests\\Docs';
+    if (!empty($namespace_segments)) {
+        $namespace .= '\\' . implode('\\', $namespace_segments);
+    }
+
     $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $path . $name . 'Test.php';
     $dir = dirname($new_path);
     // echo '  New path: ' . $new_path . PHP_EOL;
@@ -194,7 +211,7 @@ function composeTestFile(array $data, string $doc_path, string $method): void
     $output .= "\n";
     $output .= "declare(strict_types=1);\n";
     $output .= "\n";
-    $output .= "namespace ".$base_namespace."\\Tests\\Docs;\n";
+    $output .= "namespace " . $namespace . ";\n";
     $output .= "\n";
     $output .= "use PHPUnit\\Framework\\TestCase;\n";
     if(!empty($data['uses'])) {

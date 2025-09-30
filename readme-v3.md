@@ -74,10 +74,10 @@ A class to manipulate strings. Uses __toString() to convert to string when neede
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/x-string/methods/new.md) | 1.0 | `public static function new(Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string> $data = ''): self`<br>Create a new instance of XString. You can provide a string, an array of strings, a Newline object, an HtmlTag object, or a Regex object. If an array is provided, it will be joined into a single string. If no data is provided, it defaults to an empty string. |
-| [`withMode`](docs/x-string/methods/with-mode.md) | 1.0 | `public function withMode(string $mode = 'graphemes', string $encoding = 'UTF-8'): self`<br>Create a new instance of XString with the specified **mode** (`'bytes'`, `'codepoints'`, or `'graphemes'`) and **encoding** (default `'UTF-8'`). |
-| [`asBytes`](docs/x-string/methods/as-bytes.md) | 1.0 | `public function asBytes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('bytes', $encoding)`. |
-| [`asCodepoints`](docs/x-string/methods/as-codepoints.md) | 1.0 | `public function asCodepoints(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('codepoints', $encoding)`. |
-| [`asGraphemes`](docs/x-string/methods/as-graphemes.md) | 1.0 | `public function asGraphemes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('graphemes', $encoding)`. |
+| [`withMode`](docs/x-string/methods/withMode.md) | 1.0 | `public function withMode(string $mode = 'graphemes', string $encoding = 'UTF-8'): self`<br>Create a new instance of XString with the specified **mode** (`'bytes'`, `'codepoints'`, or `'graphemes'`) and **encoding** (default `'UTF-8'`). |
+| [`asBytes`](docs/x-string/methods/asBytes.md) | 1.0 | `public function asBytes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('bytes', $encoding)`. |
+| [`asCodepoints`](docs/x-string/methods/asCodepoints.md) | 1.0 | `public function asCodepoints(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('codepoints', $encoding)`. |
+| [`asGraphemes`](docs/x-string/methods/asGraphemes.md) | 1.0 | `public function asGraphemes(string $encoding = 'UTF-8'): self`<br>Alias for `withMode('graphemes', $encoding)`. |
 
 ### Generation
 

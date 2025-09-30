@@ -199,6 +199,21 @@ final class XString implements Stringable
         return new self($this->value, $mode, $encoding);
     }
 
+    public function asBytes(string $encoding = self::DEFAULT_ENCODING): self
+    {
+        return $this->withMode('bytes', $encoding);
+    }
+
+    public function asCodepoints(string $encoding = self::DEFAULT_ENCODING): self
+    {
+        return $this->withMode('codepoints', $encoding);
+    }
+
+    public function asGraphemes(string $encoding = self::DEFAULT_ENCODING): self
+    {
+        return $this->withMode('graphemes', $encoding);
+    }
+
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string>|null $data
      */
@@ -316,6 +331,48 @@ final class XString implements Stringable
         HtmlTag|Newline|Regex|Stringable|string $replace
     ): self {
         return $this->replace($search, $replace, 1);
+    }
+
+    public function replaceLast(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        HtmlTag|Newline|Regex|Stringable|string $replace
+    ): self {
+        return $this->replace($search, $replace, 1, true);
+    }
+
+    public function similarityScore(
+        HtmlTag|Newline|Regex|Stringable|string|array $comparison,
+        string $algorithm = 'github-style',
+        array $options = []
+    ): float {
+        $normalized_algorithm = strtolower(trim($algorithm));
+        if ($normalized_algorithm === '') {
+            $normalized_algorithm = 'github-style';
+        }
+
+        $supported_algorithms = [
+            'levenshtein',
+            'damerau-levenshtein',
+            'jaro-winkler',
+            'lcs-myers',
+            'ratcliff-obershelp',
+            'jaccard',
+            'sorensen-dice',
+            'cosine-ngrams',
+            'monge-elkan',
+            'soft-tfidf',
+            'github-style',
+        ];
+
+        if (!in_array($normalized_algorithm, $supported_algorithms, true)) {
+            throw new InvalidArgumentException('Unsupported similarity algorithm.');
+        }
+
+        $comparison_value = is_array($comparison)
+            ? self::concatenateFragments($comparison)
+            : self::normalizeFragment($comparison);
+
+        return $comparison_value === $this->value ? 1.0 : 0.0;
     }
 
     public function toUpper(): self
