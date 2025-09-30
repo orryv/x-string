@@ -36,6 +36,7 @@ created via [`HtmlTag::new()`](./new.md).
 - **Same validation rules.** The tag name constraints are identical to [`HtmlTag::new()`](./new.md).
 - **No attributes.** Closing tags cannot carry attributes; modifier methods (`withClass()`, etc.) throw exceptions.
 - **Optional casing.** Provide `$case_sensitive = true` to keep the supplied casing.
+- **Alias.** [`HtmlTag::endTag()`](./with-end-tag.md) is provided as a semantic alias for this factory.
 
 ## Parameters
 

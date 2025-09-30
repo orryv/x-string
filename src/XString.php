@@ -251,7 +251,6 @@ final class XString implements Stringable
             throw new InvalidArgumentException('Limit must be greater than or equal to 0.');
         }
 
-        $search_values = self::normalizeSearchValues($search);
         if ($limit === 0) {
             return new self($this->value, $this->mode, $this->encoding);
         }
@@ -260,15 +259,49 @@ final class XString implements Stringable
         $remaining = $limit ?? PHP_INT_MAX;
         $result = $this->value;
 
+        $search_values = is_array($search) ? $search : [$search];
+
         foreach ($search_values as $search_value) {
             if ($remaining === 0) {
                 break;
             }
 
+            if ($search_value instanceof Newline) {
+                $config = $search_value->getStartsWithConfig();
+                if ($config !== null) {
+                    $result = self::replaceLinesStartingWith(
+                        $result,
+                        $search_value,
+                        $replacement,
+                        $remaining,
+                        $reversed
+                    );
+
+                    continue;
+                }
+            }
+
+            if ($search_value instanceof HtmlTag) {
+                $result = self::replaceHtmlTag(
+                    $result,
+                    $search_value,
+                    $replacement,
+                    $remaining,
+                    $reversed
+                );
+
+                continue;
+            }
+
+            $normalized_search = self::normalizeFragment($search_value);
+            if ($normalized_search === '') {
+                throw new InvalidArgumentException('Search value cannot be empty.');
+            }
+
             if ($reversed) {
-                $result = self::replaceFromEnd($result, $search_value, $replacement, $remaining);
+                $result = self::replaceFromEnd($result, $normalized_search, $replacement, $remaining);
             } else {
-                $result = self::replaceFromStart($result, $search_value, $replacement, $remaining);
+                $result = self::replaceFromStart($result, $normalized_search, $replacement, $remaining);
             }
         }
 
@@ -402,27 +435,6 @@ final class XString implements Stringable
         return implode('', $fragments);
     }
 
-    /**
-     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
-     * @return array<int, string>
-     */
-    private static function normalizeSearchValues(HtmlTag|Newline|Regex|Stringable|string|array $search): array
-    {
-        $items = is_array($search) ? $search : [$search];
-        $normalized = [];
-
-        foreach ($items as $item) {
-            $fragment = self::normalizeFragment($item);
-            if ($fragment === '') {
-                throw new InvalidArgumentException('Search value cannot be empty.');
-            }
-
-            $normalized[] = $fragment;
-        }
-
-        return $normalized;
-    }
-
     private function trimInternal(bool $trim_left, bool $trim_right, bool $newline, bool $space, bool $tab): self
     {
         $mask = self::buildTrimMask($newline, $space, $tab);
@@ -501,6 +513,173 @@ final class XString implements Stringable
         }
 
         return $subject;
+    }
+
+    private static function replaceLinesStartingWith(
+        string $subject,
+        Newline $newline,
+        string $replacement,
+        int &$remaining,
+        bool $reversed
+    ): string {
+        if ($remaining <= 0) {
+            return $subject;
+        }
+
+        $config = $newline->getStartsWithConfig();
+        if ($config === null) {
+            return $subject;
+        }
+
+        $line_break = (string) $newline;
+        if ($line_break === '') {
+            return $subject;
+        }
+
+        $prefix = $config['prefix'];
+        $trim = $config['trim'];
+
+        $segments = explode($line_break, $subject);
+        $has_trailing_break = str_ends_with($subject, $line_break);
+        if ($has_trailing_break) {
+            array_pop($segments);
+        }
+
+        $indexes = $reversed
+            ? array_reverse(array_keys($segments))
+            : array_keys($segments);
+
+        foreach ($indexes as $index) {
+            if ($remaining === 0) {
+                break;
+            }
+
+            $line = $segments[$index];
+            $comparison = $trim ? ltrim($line, " \t") : $line;
+
+            if (!str_starts_with($comparison, $prefix)) {
+                continue;
+            }
+
+            $segments[$index] = $replacement;
+            $remaining--;
+        }
+
+        $result = implode($line_break, $segments);
+
+        if ($has_trailing_break) {
+            $result .= $line_break;
+        }
+
+        return $result;
+    }
+
+    private static function replaceHtmlTag(
+        string $subject,
+        HtmlTag $tag,
+        string $replacement,
+        int &$remaining,
+        bool $reversed
+    ): string {
+        if ($remaining <= 0) {
+            return $subject;
+        }
+
+        if ($reversed) {
+            $matches = self::findAllHtmlTagMatches($subject, $tag);
+            for ($index = count($matches) - 1; $index >= 0 && $remaining > 0; $index--) {
+                $match = $matches[$index];
+                $subject = substr($subject, 0, $match['offset'])
+                    . $replacement
+                    . substr($subject, $match['offset'] + $match['length']);
+                $remaining--;
+            }
+
+            return $subject;
+        }
+
+        $offset = 0;
+        while ($remaining > 0) {
+            $match = self::findNextHtmlTagMatch($subject, $tag, $offset);
+            if ($match === null) {
+                break;
+            }
+
+            $subject = substr($subject, 0, $match['offset'])
+                . $replacement
+                . substr($subject, $match['offset'] + $match['length']);
+
+            $offset = $match['offset'] + strlen($replacement);
+            $remaining--;
+        }
+
+        return $subject;
+    }
+
+    /**
+     * @return array<int, array{offset: int, length: int}>
+     */
+    private static function findAllHtmlTagMatches(string $subject, HtmlTag $tag): array
+    {
+        $matches = [];
+        $offset = 0;
+
+        while (true) {
+            $match = self::findNextHtmlTagMatch($subject, $tag, $offset);
+            if ($match === null) {
+                break;
+            }
+
+            $matches[] = $match;
+            $offset = $match['offset'] + $match['length'];
+        }
+
+        return $matches;
+    }
+
+    /**
+     * @return array{offset: int, length: int}|null
+     */
+    private static function findNextHtmlTagMatch(string $subject, HtmlTag $tag, int $offset): ?array
+    {
+        $pattern = self::buildHtmlTagPattern($tag);
+        $flags = $tag->isCaseSensitive() ? 'u' : 'iu';
+        $regex = sprintf('/%s/%s', $pattern, $flags);
+
+        $cursor = max(0, $offset);
+        $length = strlen($subject);
+
+        while ($cursor <= $length) {
+            if (preg_match($regex, $subject, $matches, PREG_OFFSET_CAPTURE, $cursor) !== 1) {
+                return null;
+            }
+
+            $match_string = $matches[0][0];
+            $match_offset = $matches[0][1];
+
+            if (!$tag->matchesFragment($match_string)) {
+                $cursor = $match_offset + max(1, strlen($match_string));
+                continue;
+            }
+
+            return [
+                'offset' => $match_offset,
+                'length' => strlen($match_string),
+            ];
+        }
+
+        return null;
+    }
+
+    private static function buildHtmlTagPattern(HtmlTag $tag): string
+    {
+        $tag_name = preg_quote($tag->getRawTagName(), '/');
+
+        if ($tag->isClosingTag()) {
+            return sprintf('<\/%s\s*>', $tag_name);
+        }
+
+        return sprintf('<\s*%s\b[^>]*\/?\s*>', $tag_name);
     }
 
     /**

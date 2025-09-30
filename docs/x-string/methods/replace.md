@@ -179,7 +179,7 @@ use Orryv\XString\HtmlTag;
 
 $xstring = XString::new('<span id="span1" class="this is a span">World!</span>')
     ->replace(
-        HtmlTag::new('span')->withClass('a', 'is'),
+        HtmlTag::new('span')->withClass('a', 'is'), // matches tags containing the listed classes
         'Hello '
     );
 
@@ -201,20 +201,20 @@ use Orryv\XString\Newline;
 
 $xstring = XString::new(" Line1 - blabla\nHello, World!")
     ->replace(
-        Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline
+        Newline::new()->startsWith('Line1', trim: true), // matches an entire line starting with "Line1" (ignoring indentation)
         'Welcome!'
     );
 
-#Test: self::assertSame("Welcome!\nHello, World!", (string) $xstring); 
+#Test: self::assertSame("Welcome!\nHello, World!", (string) $xstring);
 
 
 $xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
     ->replace(
-        Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline, basically it says: replace this whole line that starts with ....
+        Newline::new()->startsWith('Line1', trim: true), // replaces each line that begins with the given prefix
         'Welcome!'
     );
 
-#Test: self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring); 
+#Test: self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring);
 ```
 
 

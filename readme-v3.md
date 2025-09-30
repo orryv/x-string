@@ -253,9 +253,11 @@ Used to tell search arguments in other methods that you want to search for a reg
 | --- | --- | --- |
 | [`new`](docs/html-tag/methods/new.md) | 1.0 | `public static function new(string $tag_name, bool $self_closing = false, bool $case_sensitive = false): self`<br>Create a new HtmlTag instance. |
 | [`closeTag`](docs/html-tag/methods/close-tag.md) | 1.0 | `public static function closeTag(string $tag_name, bool $case_sensitive = false): self`<br>Create a new HtmlTag instance that matches a closing tag. |
-| [`withClass`](docs/html-tag/methods/with-class.md) | 1.0 | `public function withClass(string\|array<string> $class_name): self`<br>Add a class (or multiple) name condition to the HtmlTag instance. The tag must have this class to match. |
+| [`withClass`](docs/html-tag/methods/with-class.md) | 1.0 | `public function withClass(string\|array<string> ...$class_name): self`<br>Add one or more class name conditions to the HtmlTag instance. |
 | [`withId`](docs/html-tag/methods/with-id.md) | 1.0 | `public function withId(string $id): self`<br>Add an ID condition to the HtmlTag instance. The tag must have this ID to match. |
 | [`withAttribute`](docs/html-tag/methods/with-attribute.md) | 1.0 | `public function withAttribute(string $attr_name, null\|string $attr_value = null, bool $case_sensitive = false): self`<br>Add an attribute condition to the HtmlTag instance. The tag must have this attribute (and value if provided) to match. |
+| [`withBody`](docs/html-tag/methods/with-body.md) | 1.0 | `public function withBody(HtmlTag\|Newline\|Regex\|Stringable\|string\|array $body): self`<br>Append body fragments to the opening tag. |
+| [`withEndTag`](docs/html-tag/methods/with-end-tag.md) | 1.0 | `public function withEndTag(bool $append_newline = true): self`<br>Emit the matching closing tag, optionally inserting a trailing newline. |
 
 ## XStringType (factory) class
 

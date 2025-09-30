@@ -117,18 +117,17 @@ $result = XString::new($fragments);
 #Test: self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
 ```
 
-### Combine adapters, including HtmlTag with end Tag
+### Combine adapters, including HtmlTag with end tag support
 
 <!-- test:xstring-new-html-tag -->
 ```php
 use Orryv\XString;
 use Orryv\XString\HtmlTag;
-use Orryv\XString\Newline;
 
-$fragment =HtmlTag::new('p')
-      ->withClass(['intro', 'lead'])
-      ->withBody('Hello')
-      ->withEndTag();
+$fragment = HtmlTag::new('p')
+    ->withClass(['intro', 'lead'])
+    ->withBody('Hello')
+    ->withEndTag();
 $result = XString::new($fragment);
 #Test: self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
 ```
