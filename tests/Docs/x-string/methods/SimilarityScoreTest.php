@@ -75,4 +75,18 @@ final class SimilarityScoreTest extends TestCase
         self::assertSame(1.0, $score);
     }
 
+    public function testSimilarityLevenshteinNear(): void
+    {
+        $score = XString::new('kitten')->similarityScore('sitten', 'levenshtein');
+        self::assertGreaterThan(0.0, $score);
+        self::assertLessThan(1.0, $score);
+    }
+
+    public function testSimilarityGithubNear(): void
+    {
+        $score = XString::new('function similarityScore')->similarityScore('function similarityScores');
+        self::assertGreaterThan(0.0, $score);
+        self::assertLessThan(1.0, $score);
+    }
+
 }
