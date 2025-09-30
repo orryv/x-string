@@ -981,6 +981,11 @@ final class XString implements Stringable
             return $clusters;
         }
 
+        $manualClusters = self::splitGraphemesManually($value);
+        if ($manualClusters !== []) {
+            return $manualClusters;
+        }
+
         if (function_exists('mb_strlen')) {
             $units = [];
             $length = mb_strlen($value, $encoding);
@@ -994,6 +999,99 @@ final class XString implements Stringable
         }
 
         return str_split($value);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitGraphemesManually(string $value): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        $codepoints = self::splitCodepoints($value);
+        if ($codepoints === []) {
+            return [];
+        }
+
+        $clusters = [];
+        $joinNext = false;
+        $regionalIndicatorRun = 0;
+
+        foreach ($codepoints as $codepoint) {
+            if (self::isRegionalIndicator($codepoint)) {
+                if ($regionalIndicatorRun % 2 === 0) {
+                    $clusters[] = $codepoint;
+                } else {
+                    $clusters[count($clusters) - 1] .= $codepoint;
+                }
+
+                $regionalIndicatorRun++;
+                $joinNext = false;
+
+                continue;
+            }
+
+            $regionalIndicatorRun = 0;
+
+            if ($joinNext) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+                $joinNext = self::isZeroWidthJoiner($codepoint);
+
+                continue;
+            }
+
+            if ($clusters !== [] && self::shouldExtendCluster($codepoint)) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+
+                continue;
+            }
+
+            if ($clusters !== [] && self::isZeroWidthJoiner($codepoint)) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+                $joinNext = true;
+
+                continue;
+            }
+
+            $clusters[] = $codepoint;
+            $joinNext = self::isZeroWidthJoiner($codepoint);
+        }
+
+        return $clusters;
+    }
+
+    private static function shouldExtendCluster(string $codepoint): bool
+    {
+        return self::isCombiningMark($codepoint)
+            || self::isEmojiModifier($codepoint)
+            || self::isVariationSelector($codepoint);
+    }
+
+    private static function isCombiningMark(string $codepoint): bool
+    {
+        return preg_match('/^\p{M}$/u', $codepoint) === 1;
+    }
+
+    private static function isEmojiModifier(string $codepoint): bool
+    {
+        return preg_match('/^[\x{1F3FB}-\x{1F3FF}]$/u', $codepoint) === 1;
+    }
+
+    private static function isVariationSelector(string $codepoint): bool
+    {
+        return preg_match('/^[\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}]$/u', $codepoint) === 1;
+    }
+
+    private static function isZeroWidthJoiner(string $codepoint): bool
+    {
+        return $codepoint === "\u{200D}";
+    }
+
+    private static function isRegionalIndicator(string $codepoint): bool
+    {
+        return preg_match('/^[\x{1F1E6}-\x{1F1FF}]$/u', $codepoint) === 1;
     }
 
     private static function toAsciiForSlug(string $value, string $encoding): string
@@ -1019,7 +1117,48 @@ final class XString implements Stringable
             }
         }
 
+        if (preg_match('/[^\x00-\x7F]/', $value) === 1) {
+            $value = self::asciiTransliterationFallback($value, $encoding);
+        }
+
         return $value;
+    }
+
+    private static function asciiTransliterationFallback(string $value, string $encoding): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $entities = htmlentities($value, ENT_NOQUOTES, $encoding);
+        if ($entities === false) {
+            return $value;
+        }
+
+        if ($entities === '') {
+            return '';
+        }
+
+        $entities = preg_replace(
+            '/&([a-zA-Z]+?)(?:acute|cedil|circ|grave|lig|orn|ring|slash|th|tilde|uml);/u',
+            '$1',
+            $entities,
+        );
+        if ($entities === null) {
+            return $value;
+        }
+
+        $entities = preg_replace('/&[^;]+;/', '', $entities);
+        if ($entities === null) {
+            return $value;
+        }
+
+        $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
+        if ($decoded === '') {
+            return $value;
+        }
+
+        return $decoded;
     }
 
     private static function lowercaseString(string $value, string $encoding): string
