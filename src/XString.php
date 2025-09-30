@@ -1100,6 +1100,8 @@ final class XString implements Stringable
             return '';
         }
 
+        $originalValue = $value;
+
         if (class_exists('\\Transliterator')) {
             $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII; [:Nonspacing Mark:] Remove; NFC');
             if ($transliterator !== null) {
@@ -1117,11 +1119,33 @@ final class XString implements Stringable
             }
         }
 
-        if (preg_match('/[^\x00-\x7F]/', $value) === 1) {
-            $value = self::asciiTransliterationFallback($value, $encoding);
+        if (self::shouldApplyAsciiFallback($value, $originalValue)) {
+            $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
+            if ($fallback !== '') {
+                $value = $fallback;
+            }
         }
 
         return $value;
+    }
+
+    private static function shouldApplyAsciiFallback(string $value, string $original): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        if (preg_match('/[^\x00-\x7F]/', $value) === 1) {
+            return true;
+        }
+
+        foreach (["'", '"', '`', '^', '~', '?'] as $marker) {
+            if (substr_count($value, $marker) > substr_count($original, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function asciiTransliterationFallback(string $value, string $encoding): string
