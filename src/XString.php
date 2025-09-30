@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
+use Orryv\XString\Compute\Similarity;
 use Orryv\XString\Exceptions\EmptyCharacterSetException;
 use Orryv\XString\Exceptions\InvalidLengthException;
 use RuntimeException;
@@ -350,29 +351,18 @@ final class XString implements Stringable
             $normalized_algorithm = 'github-style';
         }
 
-        $supported_algorithms = [
-            'levenshtein',
-            'damerau-levenshtein',
-            'jaro-winkler',
-            'lcs-myers',
-            'ratcliff-obershelp',
-            'jaccard',
-            'sorensen-dice',
-            'cosine-ngrams',
-            'monge-elkan',
-            'soft-tfidf',
-            'github-style',
-        ];
-
-        if (!in_array($normalized_algorithm, $supported_algorithms, true)) {
-            throw new InvalidArgumentException('Unsupported similarity algorithm.');
-        }
-
         $comparison_value = is_array($comparison)
             ? self::concatenateFragments($comparison)
             : self::normalizeFragment($comparison);
 
-        return $comparison_value === $this->value ? 1.0 : 0.0;
+        return Similarity::compute(
+            $this->value,
+            $comparison_value,
+            $normalized_algorithm,
+            $options,
+            $this->mode,
+            $this->encoding
+        );
     }
 
     public function toUpper(): self

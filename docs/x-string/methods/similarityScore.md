@@ -302,6 +302,28 @@ $score = XString::new('function similarityScore')->similarityScore('function sim
 #Test: self::assertSame(1.0, $score);
 ```
 
+### Near match is never 0 or 1 (Levenshtein)
+
+<!-- test:similarity-levenshtein-near -->
+```php
+use Orryv\XString;
+
+$score = XString::new('kitten')->similarityScore('sitten', 'levenshtein');
+#Test: self::assertGreaterThan(0.0, $score);
+#Test: self::assertLessThan(1.0, $score);
+```
+
+### Near match is never 0 or 1 (GitHub style)
+
+<!-- test:similarity-github-near -->
+```php
+use Orryv\XString;
+
+$score = XString::new('function similarityScore')->similarityScore('function similarityScores');
+#Test: self::assertGreaterThan(0.0, $score);
+#Test: self::assertLessThan(1.0, $score);
+```
+
 ## One-line API table entry
 
 | Method | Signature & Description |
