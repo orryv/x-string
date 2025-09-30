@@ -787,6 +787,11 @@ final class XString implements Stringable
             }
         }
 
+        $grapheme_count = preg_match_all('/\\X/u', $this->value);
+        if ($grapheme_count !== false) {
+            return $grapheme_count;
+        }
+
         if (function_exists('mb_strlen')) {
             return mb_strlen($this->value, $this->encoding);
         }
