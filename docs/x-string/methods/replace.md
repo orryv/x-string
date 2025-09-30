@@ -18,6 +18,8 @@
     - [No replacements when limit is zero](#no-replacements-when-limit-is-zero)
     - [Invalid limit throws an exception](#invalid-limit-throws-an-exception)
     - [Empty search value throws an exception](#empty-search-value-throws-an-exception)
+    - [Replace with html tag](#replace-with-html-tag)
+    - [Replace with Newline](#replace-with-newline)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -167,6 +169,54 @@ $xstring = XString::new('example');
 #Test: $this->expectException(InvalidArgumentException::class);
 $xstring->replace('', 'test');
 ```
+
+### Replace with html tag
+
+<!-- test:replace-html-tag -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+
+$xstring = XString::new('<span id="span1" class="this is a span">World!</span>')
+    ->replace(
+        HtmlTag::new('span')->withClass('a', 'is'),
+        'Hello '
+    );
+
+#Test: self::assertSame('Hello World!</span>', (string) $xstring);
+
+$xstring = $xstring->replace(
+    HtmlTag::endTag('span'),
+    ''
+);
+#Test: self::assertSame('Hello World!', (string) $xstring);
+```
+
+### Replace with Newline
+
+<!-- test:replace-newline -->
+```php
+use Orryv\XString;
+use Orryv\XString\Newline;
+
+$xstring = XString::new(" Line1 - blabla\nHello, World!")
+    ->replace(
+        Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline
+        'Welcome!'
+    );
+
+#Test: self::assertSame("Welcome!\nHello, World!", (string) $xstring); 
+
+
+$xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
+    ->replace(
+        Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline, basically it says: replace this whole line that starts with ....
+        'Welcome!'
+    );
+
+#Test: self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring); 
+```
+
 
 ## One-line API table entry
 

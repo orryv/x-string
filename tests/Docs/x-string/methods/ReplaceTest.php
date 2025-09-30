@@ -7,6 +7,8 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
 
 final class ReplaceTest extends TestCase
 {
@@ -65,6 +67,37 @@ final class ReplaceTest extends TestCase
         $xstring = XString::new('example');
         $this->expectException(InvalidArgumentException::class);
         $xstring->replace('', 'test');
+    }
+
+    public function testReplaceHtmlTag(): void
+    {
+        $xstring = XString::new('<span id="span1" class="this is a span">World!</span>')
+            ->replace(
+                HtmlTag::new('span')->withClass('a', 'is'),
+                'Hello '
+            );
+        self::assertSame('Hello World!</span>', (string) $xstring);
+        $xstring = $xstring->replace(
+            HtmlTag::endTag('span'),
+            ''
+        );
+        self::assertSame('Hello World!', (string) $xstring);
+    }
+
+    public function testReplaceNewline(): void
+    {
+        $xstring = XString::new(" Line1 - blabla\nHello, World!")
+            ->replace(
+                Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline
+                'Welcome!'
+            );
+        self::assertSame("Welcome!\nHello, World!", (string) $xstring);
+        $xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
+            ->replace(
+                Newline::new()->startsWith('Line1', trim:true), // applies to beginning of a string or after a newline, basically it says: replace this whole line that starts with ....
+                'Welcome!'
+            );
+        self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring);
     }
 
 }
