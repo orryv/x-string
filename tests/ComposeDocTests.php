@@ -6,7 +6,7 @@ $max_version = 1.1;
 $base_path = __DIR__ . '/../';
 $base_namespace = 'Orryv\\XString';
 
-$main_readme = file_get_contents($base_path . 'readme-v2.md');
+$main_readme = file_get_contents($base_path . 'readme-v3.md');
 
 
 echo 'Readme: ' . strlen($main_readme) . ' bytes', PHP_EOL;
