@@ -7,7 +7,6 @@ namespace Orryv\XString\Tests\Docs;
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 use Orryv\XString\HtmlTag;
-use Orryv\XString\Newline;
 
 final class NewTest extends TestCase
 {
@@ -28,10 +27,10 @@ final class NewTest extends TestCase
 
     public function testXstringNewHtmlTag(): void
     {
-        $fragment =HtmlTag::new('p')
-              ->withClass(['intro', 'lead'])
-              ->withBody('Hello')
-              ->withEndTag();
+        $fragment = HtmlTag::new('p')
+            ->withClass(['intro', 'lead'])
+            ->withBody('Hello')
+            ->withEndTag();
         $result = XString::new($fragment);
         self::assertSame("<p class=\"intro lead\">Hello" . PHP_EOL . "</p>", (string) $result);
     }
