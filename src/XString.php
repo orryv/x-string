@@ -239,6 +239,171 @@ final class XString implements Stringable
         return new self($additional . $this->value, $this->mode, $this->encoding);
     }
 
+    public function substr(int $start, ?int $length = null): self
+    {
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+        $total = count($units);
+
+        if ($total === 0) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $start_index = $start >= 0 ? $start : $total + $start;
+        if ($start_index < 0) {
+            $start_index = 0;
+        }
+
+        if ($start_index >= $total) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        if ($length === null) {
+            $slice = array_slice($units, $start_index);
+        } elseif ($length >= 0) {
+            $slice = array_slice($units, $start_index, $length);
+        } else {
+            $end_index = $total + $length;
+            if ($end_index <= $start_index) {
+                return new self('', $this->mode, $this->encoding);
+            }
+
+            $slice = array_slice($units, $start_index, $end_index - $start_index);
+        }
+
+        return new self(implode('', $slice), $this->mode, $this->encoding);
+    }
+
+    public function repeat(int $times): self
+    {
+        if ($times < 0) {
+            throw new InvalidArgumentException('Repeat count must be greater than or equal to 0.');
+        }
+
+        if ($times === 0) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        return new self(str_repeat($this->value, $times), $this->mode, $this->encoding);
+    }
+
+    public function reverse(): self
+    {
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+        if ($units === []) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $units = array_reverse($units);
+
+        return new self(implode('', $units), $this->mode, $this->encoding);
+    }
+
+    public function shuffle(): self
+    {
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+        if (count($units) <= 1) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        shuffle($units);
+
+        return new self(implode('', $units), $this->mode, $this->encoding);
+    }
+
+    public function slug(Newline|HtmlTag|string $separator = '-'): self
+    {
+        $normalized_separator = self::normalizeFragment($separator);
+        if ($normalized_separator === '') {
+            throw new InvalidArgumentException('Separator cannot be empty.');
+        }
+
+        $slug_source = self::toAsciiForSlug($this->value, $this->encoding);
+        $slug_source = self::lowercaseString($slug_source, $this->encoding);
+
+        $slug = preg_replace('/[^a-z0-9]+/i', $normalized_separator, $slug_source);
+        if ($slug === null) {
+            $slug = '';
+        }
+
+        $quoted_separator = preg_quote($normalized_separator, '/');
+        $slug = preg_replace(sprintf('/%s{2,}/', $quoted_separator), $normalized_separator, $slug);
+        if ($slug === null) {
+            $slug = '';
+        }
+
+        $slug = trim($slug, $normalized_separator);
+
+        return new self($slug, $this->mode, $this->encoding);
+    }
+
+    public function fileNameSlug(Newline|HtmlTag|string $separator = '-'): self
+    {
+        $normalized_separator = self::normalizeFragment($separator);
+        if ($normalized_separator === '') {
+            throw new InvalidArgumentException('Separator cannot be empty.');
+        }
+
+        $slug_source = self::toAsciiForSlug($this->value, $this->encoding);
+        $slug_source = self::lowercaseString($slug_source, $this->encoding);
+
+        $slug_source = str_replace(['\\', '/', ':', '*', '?', '"', '<', '>', '|'], ' ', $slug_source);
+
+        $slug = preg_replace('/[^a-z0-9._-]+/i', $normalized_separator, $slug_source);
+        if ($slug === null) {
+            $slug = '';
+        }
+
+        $slug = preg_replace('/\.{2,}/', '.', $slug);
+        if ($slug === null) {
+            $slug = '';
+        }
+
+        $quoted_separator = preg_quote($normalized_separator, '/');
+        $slug = preg_replace(sprintf('/(?:%s){2,}/', $quoted_separator), $normalized_separator, $slug);
+        if ($slug === null) {
+            $slug = '';
+        }
+
+        if ($normalized_separator !== '') {
+            while (str_contains($slug, $normalized_separator . '.')) {
+                $slug = str_replace($normalized_separator . '.', '.', $slug);
+            }
+
+            while (str_contains($slug, '.' . $normalized_separator)) {
+                $slug = str_replace('.' . $normalized_separator, '.', $slug);
+            }
+        }
+
+        $slug = trim($slug, $normalized_separator . '.');
+
+        return new self($slug, $this->mode, $this->encoding);
+    }
+
+    public function insertAtInterval(Newline|HtmlTag|Regex|string $insert, int $interval): self
+    {
+        if ($interval < 1) {
+            throw new InvalidArgumentException('Interval must be at least 1.');
+        }
+
+        $fragment = self::normalizeFragment($insert);
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+
+        if ($units === []) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $parts = [];
+        foreach ($units as $index => $unit) {
+            if ($index > 0 && $index % $interval === 0) {
+                $parts[] = $fragment;
+            }
+
+            $parts[] = $unit;
+        }
+
+        return new self(implode('', $parts), $this->mode, $this->encoding);
+    }
+
     public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(true, true, $newline, $space, $tab);
@@ -746,6 +911,291 @@ final class XString implements Stringable
         }
 
         return str_split($characters);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitByMode(string $value, string $mode, string $encoding): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        return match ($mode) {
+            'bytes' => str_split($value),
+            'codepoints' => self::splitCodepoints($value),
+            default => self::splitGraphemes($value, $encoding),
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitCodepoints(string $value): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        if (preg_match('//u', $value) === 1) {
+            $parts = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
+            if ($parts !== false) {
+                return $parts;
+            }
+        }
+
+        return str_split($value);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitGraphemes(string $value, string $encoding): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        if (function_exists('grapheme_extract')) {
+            $units = [];
+            $offset = 0;
+            $length = strlen($value);
+
+            while ($offset < $length) {
+                $cluster = grapheme_extract($value, 1, GRAPHEME_EXTR_COUNT, $offset, $next);
+                if ($cluster === false || $cluster === '') {
+                    $next = $offset + 1;
+                    $cluster = substr($value, $offset, $next - $offset);
+                }
+
+                $units[] = $cluster;
+                $offset = $next;
+            }
+
+            return $units;
+        }
+
+        $clusters = preg_split('/\\X/u', $value, -1, PREG_SPLIT_NO_EMPTY);
+        if ($clusters !== false && $clusters !== []) {
+            return $clusters;
+        }
+
+        $manualClusters = self::splitGraphemesManually($value);
+        if ($manualClusters !== []) {
+            return $manualClusters;
+        }
+
+        if (function_exists('mb_strlen')) {
+            $units = [];
+            $length = mb_strlen($value, $encoding);
+            if ($length !== false) {
+                for ($i = 0; $i < $length; $i++) {
+                    $units[] = (string) mb_substr($value, $i, 1, $encoding);
+                }
+
+                return $units;
+            }
+        }
+
+        return str_split($value);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitGraphemesManually(string $value): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        $codepoints = self::splitCodepoints($value);
+        if ($codepoints === []) {
+            return [];
+        }
+
+        $clusters = [];
+        $joinNext = false;
+        $regionalIndicatorRun = 0;
+
+        foreach ($codepoints as $codepoint) {
+            if (self::isRegionalIndicator($codepoint)) {
+                if ($regionalIndicatorRun % 2 === 0) {
+                    $clusters[] = $codepoint;
+                } else {
+                    $clusters[count($clusters) - 1] .= $codepoint;
+                }
+
+                $regionalIndicatorRun++;
+                $joinNext = false;
+
+                continue;
+            }
+
+            $regionalIndicatorRun = 0;
+
+            if ($joinNext) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+                $joinNext = self::isZeroWidthJoiner($codepoint);
+
+                continue;
+            }
+
+            if ($clusters !== [] && self::shouldExtendCluster($codepoint)) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+
+                continue;
+            }
+
+            if ($clusters !== [] && self::isZeroWidthJoiner($codepoint)) {
+                $clusters[count($clusters) - 1] .= $codepoint;
+                $joinNext = true;
+
+                continue;
+            }
+
+            $clusters[] = $codepoint;
+            $joinNext = self::isZeroWidthJoiner($codepoint);
+        }
+
+        return $clusters;
+    }
+
+    private static function shouldExtendCluster(string $codepoint): bool
+    {
+        return self::isCombiningMark($codepoint)
+            || self::isEmojiModifier($codepoint)
+            || self::isVariationSelector($codepoint);
+    }
+
+    private static function isCombiningMark(string $codepoint): bool
+    {
+        return preg_match('/^\p{M}$/u', $codepoint) === 1;
+    }
+
+    private static function isEmojiModifier(string $codepoint): bool
+    {
+        return preg_match('/^[\x{1F3FB}-\x{1F3FF}]$/u', $codepoint) === 1;
+    }
+
+    private static function isVariationSelector(string $codepoint): bool
+    {
+        return preg_match('/^[\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}]$/u', $codepoint) === 1;
+    }
+
+    private static function isZeroWidthJoiner(string $codepoint): bool
+    {
+        return $codepoint === "\u{200D}";
+    }
+
+    private static function isRegionalIndicator(string $codepoint): bool
+    {
+        return preg_match('/^[\x{1F1E6}-\x{1F1FF}]$/u', $codepoint) === 1;
+    }
+
+    private static function toAsciiForSlug(string $value, string $encoding): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $originalValue = $value;
+
+        if (class_exists('\\Transliterator')) {
+            $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII; [:Nonspacing Mark:] Remove; NFC');
+            if ($transliterator !== null) {
+                $transliterated = $transliterator->transliterate($value);
+                if ($transliterated !== null) {
+                    $value = $transliterated;
+                }
+            }
+        }
+
+        if (function_exists('iconv')) {
+            $converted = @iconv($encoding, 'ASCII//TRANSLIT//IGNORE', $value);
+            if ($converted !== false) {
+                $value = $converted;
+            }
+        }
+
+        if (self::shouldApplyAsciiFallback($value, $originalValue)) {
+            $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
+            if ($fallback !== '') {
+                $value = $fallback;
+            }
+        }
+
+        return $value;
+    }
+
+    private static function shouldApplyAsciiFallback(string $value, string $original): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        if (preg_match('/[^\x00-\x7F]/', $value) === 1) {
+            return true;
+        }
+
+        foreach (["'", '"', '`', '^', '~', '?'] as $marker) {
+            if (substr_count($value, $marker) > substr_count($original, $marker)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function asciiTransliterationFallback(string $value, string $encoding): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $entities = htmlentities($value, ENT_NOQUOTES, $encoding);
+        if ($entities === false) {
+            return $value;
+        }
+
+        if ($entities === '') {
+            return '';
+        }
+
+        $entities = preg_replace(
+            '/&([a-zA-Z]+?)(?:acute|cedil|circ|grave|lig|orn|ring|slash|th|tilde|uml);/u',
+            '$1',
+            $entities,
+        );
+        if ($entities === null) {
+            return $value;
+        }
+
+        $entities = preg_replace('/&[^;]+;/', '', $entities);
+        if ($entities === null) {
+            return $value;
+        }
+
+        $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
+        if ($decoded === '') {
+            return $value;
+        }
+
+        return $decoded;
+    }
+
+    private static function lowercaseString(string $value, string $encoding): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('mb_strtolower')) {
+            return mb_strtolower($value, $encoding);
+        }
+
+        return strtolower($value);
     }
 
     private static function normalizeMode(string $mode): string
