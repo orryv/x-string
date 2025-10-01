@@ -5,6 +5,9 @@
 $max_version = 1.1;
 $base_path = __DIR__ . '/../';
 $base_namespace = 'Orryv\\XString';
+$exclude = [
+    '/vendor/',
+];
 
 $main_readme = file_get_contents($base_path . 'readme-v3.md');
 
@@ -33,9 +36,13 @@ foreach($lines as $line) {
     $doc_path = $matches[2];
     echo 'Method: ' . $method_name .  ' (' . $doc_path . ')', PHP_EOL;
 
-    if (str_starts_with($doc_path, '/vendor/')) {
-        echo '  Skipping excluded path: ' . $doc_path . PHP_EOL;
-        continue;
+    foreach ($exclude as $excludedPath) {
+        $isDirectory = str_ends_with($excludedPath, '/');
+        if (($isDirectory && str_starts_with($doc_path, $excludedPath)) ||
+            (!$isDirectory && $doc_path === $excludedPath)) {
+            echo '  Skipping excluded path: ' . $doc_path . PHP_EOL;
+            continue 2;
+        }
     }
 
     // Check version (second column) version is a float number
