@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Orryv;
 
 use InvalidArgumentException;
+use Normalizer;
 use Orryv\XString\HtmlTag;
 use Orryv\XString\Newline;
 use Orryv\XString\Regex;
@@ -13,6 +14,7 @@ use Orryv\XString\Exceptions\EmptyCharacterSetException;
 use Orryv\XString\Exceptions\InvalidLengthException;
 use RuntimeException;
 use Stringable;
+use ValueError;
 
 final class XString implements Stringable
 {
@@ -404,6 +406,206 @@ final class XString implements Stringable
         return new self(implode('', $parts), $this->mode, $this->encoding);
     }
 
+    public function wrap(Newline|HtmlTag|Regex|string $before, Newline|HtmlTag|Regex|string|null $after = null): self
+    {
+        $prefix = self::normalizeFragment($before);
+        $suffix = $after === null
+            ? $prefix
+            : self::normalizeFragment($after);
+
+        return new self($prefix . $this->value . $suffix, $this->mode, $this->encoding);
+    }
+
+    public function indent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
+    {
+        if ($spaces < 0 || $tabs < 0) {
+            throw new InvalidArgumentException('Indentation parameters must be greater than or equal to 0.');
+        }
+
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $indentation = str_repeat(' ', $spaces) . str_repeat("\t", $tabs);
+        if ($indentation === '') {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        if ($lines < 0) {
+            $total_lines = preg_match_all('/^/m', $this->value);
+            if ($total_lines === false || $total_lines === 0) {
+                return new self($this->value, $this->mode, $this->encoding);
+            }
+
+            $target = min(-$lines, $total_lines);
+            if ($target === 0) {
+                return new self($this->value, $this->mode, $this->encoding);
+            }
+
+            $processed = 0;
+            $result = preg_replace_callback(
+                '/^/m',
+                static function (array $matches) use (&$processed, $total_lines, $target, $indentation): string {
+                    $should_indent = $processed >= ($total_lines - $target);
+                    $processed++;
+
+                    return $should_indent ? $indentation : $matches[0];
+                },
+                $this->value
+            );
+        } else {
+            $limit = $lines > 0 ? $lines : -1;
+
+            $result = preg_replace('/^/m', $indentation, $this->value, $limit);
+        }
+
+        if ($result === null) {
+            $result = $this->value;
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function outdent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
+    {
+        if ($spaces < 0 || $tabs < 0) {
+            throw new InvalidArgumentException('Indentation parameters must be greater than or equal to 0.');
+        }
+
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        if ($spaces === 0 && $tabs === 0) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        if ($lines < 0) {
+            $total_lines = preg_match_all('/^/m', $this->value);
+            if ($total_lines === false || $total_lines === 0) {
+                return new self($this->value, $this->mode, $this->encoding);
+            }
+
+            $target = min(-$lines, $total_lines);
+            if ($target === 0) {
+                return new self($this->value, $this->mode, $this->encoding);
+            }
+
+            $processed = 0;
+            $result = preg_replace_callback(
+                '/^([ \t]*)/m',
+                static function (array $matches) use (&$processed, $total_lines, $target, $spaces, $tabs): string {
+                    $should_outdent = $processed >= ($total_lines - $target);
+                    $processed++;
+
+                    if ($should_outdent) {
+                        return self::removeIndentationPrefix($matches[1], $spaces, $tabs);
+                    }
+
+                    return $matches[1];
+                },
+                $this->value
+            );
+        } else {
+            $limit = $lines > 0 ? $lines : -1;
+
+            $result = preg_replace_callback(
+                '/^([ \t]*)/m',
+                static function (array $matches) use ($spaces, $tabs): string {
+                    return self::removeIndentationPrefix($matches[1], $spaces, $tabs);
+                },
+                $this->value,
+                $limit
+            );
+        }
+
+        if ($result === null) {
+            $result = $this->value;
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function normalize(int $form = Normalizer::FORM_C): self
+    {
+        if (!class_exists(Normalizer::class)) {
+            throw new RuntimeException('The intl extension is required for normalization.');
+        }
+
+        try {
+            $normalized = Normalizer::normalize($this->value, $form);
+        } catch (ValueError $exception) {
+            throw new InvalidArgumentException('Invalid normalization form provided.', 0, $exception);
+        }
+        if ($normalized === false) {
+            throw new RuntimeException('Failed to normalize the string.');
+        }
+
+        return new self($normalized, $this->mode, $this->encoding);
+    }
+
+    public function pad(
+        int $length,
+        Newline|HtmlTag|Regex|string $pad_string = ' ',
+        bool $left = true,
+        bool $right = false
+    ): self {
+        if ($length < 0) {
+            throw new InvalidArgumentException('Target length must be greater than or equal to 0.');
+        }
+
+        if (!$left && !$right) {
+            throw new InvalidArgumentException('At least one side must be selected for padding.');
+        }
+
+        $current_length = $this->length();
+        if ($length <= $current_length) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $pad_fragment = self::normalizeFragment($pad_string);
+        if ($pad_fragment === '') {
+            throw new InvalidArgumentException('Pad string cannot be empty.');
+        }
+
+        $units_needed = $length - $current_length;
+
+        if ($left && $right) {
+            $left_units = intdiv($units_needed, 2);
+            $right_units = $units_needed - $left_units;
+        } elseif ($left) {
+            $left_units = $units_needed;
+            $right_units = 0;
+        } else {
+            $left_units = 0;
+            $right_units = $units_needed;
+        }
+
+        $left_padding = $left_units > 0
+            ? self::buildPadding($pad_fragment, $left_units, $this->mode, $this->encoding)
+            : '';
+        $right_padding = $right_units > 0
+            ? self::buildPadding($pad_fragment, $right_units, $this->mode, $this->encoding)
+            : '';
+
+        return new self($left_padding . $this->value . $right_padding, $this->mode, $this->encoding);
+    }
+
+    public function lpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    {
+        return $this->pad($length, $pad_string, true, false);
+    }
+
+    public function rpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    {
+        return $this->pad($length, $pad_string, false, true);
+    }
+
+    public function center(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    {
+        return $this->pad($length, $pad_string, true, true);
+    }
+
     public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(true, true, $newline, $space, $tab);
@@ -645,6 +847,69 @@ final class XString implements Stringable
         }
 
         return implode('', $fragments);
+    }
+
+    private static function removeIndentationPrefix(string $prefix, int $spaces, int $tabs): string
+    {
+        if ($prefix === '') {
+            return '';
+        }
+
+        $remaining_spaces = $spaces;
+        $remaining_tabs = $tabs;
+        $length = strlen($prefix);
+        $index = 0;
+
+        while ($index < $length) {
+            $char = $prefix[$index];
+
+            if ($char === ' ' && $remaining_spaces > 0) {
+                $remaining_spaces--;
+                $index++;
+                continue;
+            }
+
+            if ($char === "\t" && $remaining_tabs > 0) {
+                $remaining_tabs--;
+                $index++;
+                continue;
+            }
+
+            break;
+        }
+
+        if ($index >= $length) {
+            return '';
+        }
+
+        return substr($prefix, $index);
+    }
+
+    private static function buildPadding(string $pad_fragment, int $units, string $mode, string $encoding): string
+    {
+        if ($units <= 0) {
+            return '';
+        }
+
+        $units_pool = self::splitByMode($pad_fragment, $mode, $encoding);
+        if ($units_pool === []) {
+            return '';
+        }
+
+        $pool_count = count($units_pool);
+        $result = '';
+
+        $full_repeats = intdiv($units, $pool_count);
+        if ($full_repeats > 0) {
+            $result .= str_repeat($pad_fragment, $full_repeats);
+        }
+
+        $remainder = $units % $pool_count;
+        if ($remainder > 0) {
+            $result .= implode('', array_slice($units_pool, 0, $remainder));
+        }
+
+        return $result;
     }
 
     private function trimInternal(bool $trim_left, bool $trim_right, bool $newline, bool $space, bool $tab): self
