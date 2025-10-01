@@ -33,6 +33,11 @@ foreach($lines as $line) {
     $doc_path = $matches[2];
     echo 'Method: ' . $method_name .  ' (' . $doc_path . ')', PHP_EOL;
 
+    if (str_starts_with($doc_path, '/vendor/')) {
+        echo '  Skipping excluded path: ' . $doc_path . PHP_EOL;
+        continue;
+    }
+
     // Check version (second column) version is a float number
     $version = substr($line, strpos($line, '|', 1) + 1);
     $version = substr($version, 0, strpos($version, '|'));
