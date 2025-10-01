@@ -2,18 +2,27 @@
 
 // Run `php tests/ComposeDocTests.php` to regenerate the docs in README.md
 
+$max_version = 1.1;
 $base_path = __DIR__ . '/../';
 $base_namespace = 'Orryv\\XString';
 $exclude = [
     '/vendor/',
 ];
 
+$docs_manifest = parseReadmeDocs($base_path . 'readme-v3.md', $max_version);
+
 removeDocsDir();
 
 $zero_count = 0;
 
 foreach (findMarkdownFiles($base_path, $exclude) as $doc_path => $doc_file) {
-    echo 'File: ' . $doc_path . PHP_EOL;
+    $metadata = $docs_manifest[$doc_path] ?? [];
+
+    if (!empty($metadata['method'])) {
+        echo 'Method: ' . $metadata['method'] . ' (' . $doc_path . ')' . PHP_EOL;
+    } else {
+        echo 'File: ' . $doc_path . PHP_EOL;
+    }
 
     if(!file_exists($doc_file)) {
         echo '  Doc file not found: ' . $doc_file, PHP_EOL;
@@ -31,7 +40,7 @@ foreach (findMarkdownFiles($base_path, $exclude) as $doc_path => $doc_file) {
     }
 
     $data = parseBlocks($blocks);
-    composeTestFile($data, $doc_path);
+    composeTestFile($data, $doc_path, $metadata);
 
 }
 
@@ -137,13 +146,20 @@ function parseBlocks(array $blocks): array {
     return $data;
 }
 
-function composeTestFile(array $data, string $doc_path): void
+function composeTestFile(array $data, string $doc_path, array $metadata): void
 {
     global $base_namespace;
 
     $name = substr(basename($doc_path), 0, -3);
 
-    $directoryPath = dirname($doc_path);
+    if (!empty($metadata['method']) && $metadata['method'] !== $name) {
+        echo 'ERROR: method name (' . $metadata['method'] . ') does not match doc file name (' . $name . ' -> ' . $doc_path . ')' . PHP_EOL;
+        return;
+    }
+
+    $relativePath = normalizeDocPath($doc_path);
+
+    $directoryPath = dirname($relativePath);
     $path = '';
     if ($directoryPath !== '' && $directoryPath !== '.') {
         $normalizedDirectory = trim(str_replace('\\', '/', $directoryPath), '/');
@@ -151,8 +167,8 @@ function composeTestFile(array $data, string $doc_path): void
             $path = $normalizedDirectory . '/';
         }
     }
-    // first character to upper
-    $name = ucfirst($name);
+    // first character to upper / normalize name
+    $name = buildClassName($name);
 
     $namespace_segments = [];
     $trimmed_path = trim($path, '/');
@@ -162,7 +178,7 @@ function composeTestFile(array $data, string $doc_path): void
                 continue;
             }
 
-            $namespace_segments[] = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $segment)));
+            $namespace_segments[] = normalizeNamespaceSegment($segment);
         }
     }
 
@@ -280,6 +296,76 @@ function isExcludedPath(string $relativePath, array $exclude): bool {
     }
 
     return false;
+}
+
+function parseReadmeDocs(string $readme_path, float $max_version): array {
+    if (!file_exists($readme_path)) {
+        return [];
+    }
+
+    $manifest = [];
+    $lines = explode("\n", file_get_contents($readme_path));
+
+    foreach ($lines as $line) {
+        if (!str_starts_with($line, '| [`')) {
+            continue;
+        }
+
+        if (!preg_match('/\|\s+\[`(.*?)`\]\((.*?)\)\s+\|/', $line, $matches) || count($matches) < 3) {
+            continue;
+        }
+
+        $method_name = $matches[1];
+        $doc_path = $matches[2];
+
+        $version_column = substr($line, strpos($line, '|', 1) + 1);
+        $version_column = substr($version_column, 0, strpos($version_column, '|'));
+        $version = trim($version_column);
+
+        if ((float)$version > $max_version) {
+            continue;
+        }
+
+        $manifest[$doc_path] = [
+            'method' => $method_name,
+        ];
+    }
+
+    return $manifest;
+}
+
+function normalizeDocPath(string $doc_path): string {
+    if (str_starts_with($doc_path, 'docs/')) {
+        return substr($doc_path, 5);
+    }
+
+    return $doc_path;
+}
+
+function normalizeNamespaceSegment(string $segment): string {
+    $segment = str_replace(['-', '_', '.'], ' ', $segment);
+    $segment = preg_replace('/\s+/', ' ', $segment);
+    $parts = array_filter(explode(' ', $segment));
+    $normalized = '';
+
+    foreach ($parts as $part) {
+        $normalized .= ucfirst($part);
+    }
+
+    return $normalized;
+}
+
+function buildClassName(string $name): string {
+    $name = str_replace(['-', '_', '.'], ' ', $name);
+    $name = preg_replace('/\s+/', ' ', $name);
+    $parts = array_filter(explode(' ', $name));
+    $normalized = '';
+
+    foreach ($parts as $part) {
+        $normalized .= ucfirst($part);
+    }
+
+    return $normalized ?: 'Doc';
 }
 
 ?>
