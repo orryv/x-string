@@ -251,15 +251,3 @@ Used to tell search arguments in other methods that you want to search for a reg
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/x-string/methods/Grapheme/new.md) | 1.0 | `public static function new(string $pattern = '', int $modifiers = 0): self`<br>Create a new Grapheme instance. $modifiers is a bitmask of graph modifiers (ex. Grapheme::MODIFIER_CASE_INSENSITIVE). |
-
-
-#### Delete this when done refactoring ComposeDocTests.php
-
-<!-- test:main-test-->
-```php
-
-echo 'hello';
-
-#Test: self::assertEquals('hello', (string) new \XString\XString('hello'));
-
-```
