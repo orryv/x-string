@@ -529,7 +529,7 @@ final class XString implements Stringable
     public function normalize(int $form = Normalizer::FORM_C): self
     {
         if (!class_exists(Normalizer::class)) {
-            throw new RuntimeException('The intl extension is required for normalization.');
+            throw new RuntimeException('The intl extension (Normalizer class) is required for normalization.');
         }
 
         try {
