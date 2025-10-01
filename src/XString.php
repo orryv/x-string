@@ -606,6 +606,311 @@ final class XString implements Stringable
         return $this->pad($length, $pad_string, true, true);
     }
 
+    public function mask(
+        Newline|HtmlTag|Regex|string $mask,
+        Newline|HtmlTag|Regex|string $mask_char = '#',
+        bool $reversed = false
+    ): self {
+        $pattern = self::normalizeFragment($mask);
+        $placeholder = self::normalizeFragment($mask_char);
+
+        $placeholder_units = self::splitGraphemes($placeholder, $this->encoding);
+        if (count($placeholder_units) !== 1) {
+            throw new InvalidArgumentException('Mask placeholder must be a single grapheme.');
+        }
+
+        $placeholder_unit = $placeholder_units[0];
+        $mask_units = self::splitGraphemes($pattern, $this->encoding);
+        $source_units = self::splitByMode($this->value, $this->mode, $this->encoding);
+
+        $result = '';
+        $source_count = count($source_units);
+
+        if ($reversed) {
+            $placeholder_count = 0;
+            foreach ($mask_units as $mask_unit) {
+                if ($mask_unit === $placeholder_unit) {
+                    $placeholder_count++;
+                }
+            }
+
+            $source_index = max(0, $source_count - $placeholder_count);
+        } else {
+            $source_index = 0;
+        }
+
+        foreach ($mask_units as $mask_unit) {
+            if ($mask_unit === $placeholder_unit) {
+                if ($source_index < $source_count) {
+                    $result .= $source_units[$source_index];
+                    $source_index++;
+                } else {
+                    break;
+                }
+
+                continue;
+            }
+
+            $result .= $mask_unit;
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function collapseWhitespace(bool $space = true, bool $tab = true, bool $newline = false): self
+    {
+        if (!$space && !$tab && !$newline) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $result = $this->value;
+
+        if ($space) {
+            $collapsed = preg_replace('/ {2,}/', ' ', $result);
+            if ($collapsed !== null) {
+                $result = $collapsed;
+            }
+        }
+
+        if ($tab) {
+            $collapsed = preg_replace("/\t{2,}/", "\t", $result);
+            if ($collapsed !== null) {
+                $result = $collapsed;
+            }
+        }
+
+        if ($newline) {
+            $collapsed = preg_replace_callback(
+                '/(?:\r\n|\r|\n){2,}/',
+                static function (array $matches): string {
+                    $sequence = $matches[0];
+
+                    if (str_contains($sequence, "\r\n")) {
+                        return "\r\n";
+                    }
+
+                    if (str_contains($sequence, "\r")) {
+                        return "\r";
+                    }
+
+                    return "\n";
+                },
+                $result
+            );
+
+            if ($collapsed !== null) {
+                $result = $collapsed;
+            }
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function collapseWhitespaceToSpace(): self
+    {
+        return $this->collapseWhitespaceToReplacement(' ');
+    }
+
+    public function collapseWhitespaceToTab(): self
+    {
+        return $this->collapseWhitespaceToReplacement("\t");
+    }
+
+    public function collapseWhitespaceToNewline(): self
+    {
+        return $this->collapseWhitespaceToReplacement("\n");
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $start
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $end
+     */
+    public function between(
+        HtmlTag|Newline|Regex|Stringable|string|array $start,
+        HtmlTag|Newline|Regex|Stringable|string|array $end,
+        bool $last_occurence = false,
+        int $skip_start = 0,
+        int $skip_end = 0
+    ): self {
+        if ($skip_start < 0 || $skip_end < 0) {
+            throw new InvalidArgumentException('Skip values must be greater than or equal to 0.');
+        }
+
+        $start_sequence = self::normalizeSearchSequence($start);
+        $end_sequence = self::normalizeSearchSequence($end);
+
+        if ($last_occurence) {
+            $start_occurrences = self::findAllSequences($this->value, $start_sequence);
+            if ($start_occurrences === []) {
+                return new self('', $this->mode, $this->encoding);
+            }
+
+            $start_index = count($start_occurrences) - 1 - $skip_start;
+            if ($start_index < 0 || $start_index >= count($start_occurrences)) {
+                return new self('', $this->mode, $this->encoding);
+            }
+
+            $start_match = $start_occurrences[$start_index];
+        } else {
+            $start_match = self::findSequenceWithSkip($this->value, $start_sequence, 0, $skip_start);
+            if ($start_match === null) {
+                return new self('', $this->mode, $this->encoding);
+            }
+        }
+
+        $end_match = self::findSequenceWithSkip($this->value, $end_sequence, $start_match['end'], $skip_end);
+        if ($end_match === null || $end_match['start'] < $start_match['end']) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        return new self(
+            substr($this->value, $start_match['end'], $end_match['start'] - $start_match['end']),
+            $this->mode,
+            $this->encoding
+        );
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function before(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        bool $last_occurence = false,
+        int $skip = 0
+    ): self {
+        if ($skip < 0) {
+            throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
+        }
+
+        $sequence = self::normalizeSearchSequence($search);
+        $occurrences = self::findAllSequences($this->value, $sequence);
+
+        if ($occurrences === []) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $index = $last_occurence
+            ? count($occurrences) - 1 - $skip
+            : $skip;
+
+        if ($index < 0 || $index >= count($occurrences)) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $match = $occurrences[$index];
+
+        return new self(substr($this->value, 0, $match['start']), $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function after(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        bool $last_occurence = false,
+        int $skip = 0
+    ): self {
+        if ($skip < 0) {
+            throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
+        }
+
+        $sequence = self::normalizeSearchSequence($search);
+        $occurrences = self::findAllSequences($this->value, $sequence);
+
+        if ($occurrences === []) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $index = $last_occurence
+            ? count($occurrences) - 1 - $skip
+            : $skip;
+
+        if ($index < 0 || $index >= count($occurrences)) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $match = $occurrences[$index];
+
+        return new self(substr($this->value, $match['end']), $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $input_delimiter
+     */
+    public function toSnake(Newline|HtmlTag|Regex|string|array $input_delimiter = ' '): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $delimiters = is_array($input_delimiter) ? $input_delimiter : [$input_delimiter];
+        if ($delimiters === []) {
+            throw new InvalidArgumentException('Input delimiter cannot be empty.');
+        }
+
+        $normalized_delimiters = [];
+        foreach ($delimiters as $delimiter) {
+            $fragment = self::normalizeFragment($delimiter);
+            if ($fragment === '') {
+                throw new InvalidArgumentException('Input delimiters cannot be empty.');
+            }
+
+            $normalized_delimiters[$fragment] = true;
+        }
+
+        $normalized_delimiters = array_keys($normalized_delimiters);
+
+        $working = $this->value;
+        $patterns = [
+            '/(?<=\p{Ll})(?=\p{Lu})/u',
+            '/(?<=\p{L})(?=\p{Nd})/u',
+            '/(?<=\p{Nd})(?=\p{L})/u',
+            '/(?<=\p{Lu})(?=\p{Lu}\p{Ll})/u',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $next = preg_replace($pattern, ' ', $working);
+            if ($next !== null) {
+                $working = $next;
+            }
+        }
+
+        if ($normalized_delimiters !== []) {
+            $escaped_parts = array_map(
+                static fn (string $value): string => preg_quote($value, '/'),
+                $normalized_delimiters
+            );
+            $delimiter_pattern = '/(?:' . implode('|', $escaped_parts) . ')+/u';
+            $next = preg_replace($delimiter_pattern, ' ', $working);
+            if ($next !== null) {
+                $working = $next;
+            }
+        }
+
+        $segments = preg_split('/[\s_]+/u', $working);
+        if ($segments === false) {
+            $segments = preg_split('/_+/', $working);
+        }
+
+        $words = [];
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === null) {
+                continue;
+            }
+
+            $segment = trim($segment);
+            if ($segment === '') {
+                continue;
+            }
+
+            $words[] = function_exists('mb_strtolower')
+                ? mb_strtolower($segment, $this->encoding)
+                : strtolower($segment);
+        }
+
+        return new self(implode('_', $words), $this->mode, $this->encoding);
+    }
+
     public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(true, true, $newline, $space, $tab);
@@ -817,6 +1122,131 @@ final class XString implements Stringable
     public function __toString(): string
     {
         return $this->value;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $value
+     * @return list<string>
+     */
+    private static function normalizeSearchSequence(HtmlTag|Newline|Regex|Stringable|string|array $value): array
+    {
+        $items = is_array($value) ? $value : [$value];
+        if ($items === []) {
+            throw new InvalidArgumentException('Search sequence cannot be empty.');
+        }
+
+        $sequence = [];
+        foreach ($items as $item) {
+            $fragment = self::normalizeFragment($item);
+            if ($fragment === '') {
+                throw new InvalidArgumentException('Search sequence values cannot be empty.');
+            }
+
+            $sequence[] = $fragment;
+        }
+
+        return $sequence;
+    }
+
+    /**
+     * @param list<string> $sequence
+     * @return array{start: int, end: int}|null
+     */
+    private static function findSequence(string $subject, array $sequence, int $offset): ?array
+    {
+        $current_offset = max(0, $offset);
+        $start = null;
+
+        foreach ($sequence as $fragment) {
+            $position = strpos($subject, $fragment, $current_offset);
+            if ($position === false) {
+                return null;
+            }
+
+            if ($start === null) {
+                $start = $position;
+            }
+
+            $current_offset = $position + strlen($fragment);
+        }
+
+        if ($start === null) {
+            return null;
+        }
+
+        return [
+            'start' => $start,
+            'end' => $current_offset,
+        ];
+    }
+
+    /**
+     * @param list<string> $sequence
+     * @return list<array{start: int, end: int}>
+     */
+    private static function findAllSequences(string $subject, array $sequence): array
+    {
+        $occurrences = [];
+        $offset = 0;
+
+        while (true) {
+            $match = self::findSequence($subject, $sequence, $offset);
+            if ($match === null) {
+                break;
+            }
+
+            $occurrences[] = $match;
+            $next_offset = $match['start'] + 1;
+            if ($next_offset <= $offset) {
+                $next_offset = $offset + 1;
+            }
+
+            $offset = $next_offset;
+        }
+
+        return $occurrences;
+    }
+
+    /**
+     * @param list<string> $sequence
+     * @return array{start: int, end: int}|null
+     */
+    private static function findSequenceWithSkip(string $subject, array $sequence, int $offset, int $skip): ?array
+    {
+        $current_offset = max(0, $offset);
+        $remaining = $skip;
+
+        while (true) {
+            $match = self::findSequence($subject, $sequence, $current_offset);
+            if ($match === null) {
+                return null;
+            }
+
+            if ($remaining === 0) {
+                return $match;
+            }
+
+            $remaining--;
+            $advance = max(1, $match['end'] - $match['start']);
+            $current_offset = $match['start'] + $advance;
+        }
+    }
+
+    private function collapseWhitespaceToReplacement(string $replacement): self
+    {
+        $normalized = $this->collapseWhitespace(space: true, tab: true, newline: true);
+        $string = (string) $normalized;
+
+        $search = ["\r\n", "\r", "\n", "\t", ' '];
+        $converted = str_replace($search, $replacement, $string);
+
+        $repeat_pattern = '/' . preg_quote($replacement, '/') . '+/u';
+        $collapsed = preg_replace($repeat_pattern, $replacement, $converted);
+        if ($collapsed !== null) {
+            $converted = $collapsed;
+        }
+
+        return new self($converted, $this->mode, $this->encoding);
     }
 
     private static function normalizeFragment(mixed $value): string
