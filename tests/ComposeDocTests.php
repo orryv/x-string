@@ -168,23 +168,30 @@ function parseBlocks(array $blocks): array {
     return $data;
 }
 
-function composeTestFile(array $data, string $doc_path, string $method): void 
+function composeTestFile(array $data, string $doc_path, string $method): void
 {
     global $base_namespace;
 
-    $name = substr(basename($doc_path), 0, -3);
+    $normalized_path = ltrim($doc_path, '/');
+    $path_info = pathinfo($normalized_path);
+
+    $name = $path_info['filename'] ?? '';
 
     if($method !== $name) {
         echo 'ERROR: method name (' . $method . ') does not match doc file name (' . $name . ' -> ' . $doc_path . ')' . PHP_EOL;
         return;
     }
 
-    $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
+    $relative_directory = $path_info['dirname'] ?? '';
+    if ($relative_directory === '.') {
+        $relative_directory = '';
+    }
+
     // first character to upper
     $name = ucfirst($name);
 
     $namespace_segments = [];
-    $trimmed_path = trim($path, '/');
+    $trimmed_path = trim($relative_directory, '/');
     if ($trimmed_path !== '') {
         foreach (explode('/', $trimmed_path) as $segment) {
             if ($segment === '') {
@@ -200,7 +207,11 @@ function composeTestFile(array $data, string $doc_path, string $method): void
         $namespace .= '\\' . implode('\\', $namespace_segments);
     }
 
-    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $path . $name . 'Test.php';
+    $relative_directory_path = $relative_directory === ''
+        ? ''
+        : str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative_directory) . DIRECTORY_SEPARATOR;
+
+    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $relative_directory_path . $name . 'Test.php';
     $dir = dirname($new_path);
     // echo '  New path: ' . $new_path . PHP_EOL;
     if(!is_dir($dir)) {
