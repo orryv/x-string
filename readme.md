@@ -1,5 +1,9 @@
 # XString
 
+## Requirements
+- PHP 8.2+
+- Extensions: `intl` (needed for normalization and grapheme-aware features), `mbstring`, `iconv`
+
 ## TODO's
 - [ ] Think about issues, improvements and advice and put it in the section below (`Issues, improvements and advice`): about this readme and about the code that we will create using what's written in `# Concept`. Some questions to ask (but by far not a complete list): 
   - Can I create the source code the way it should work described here? 
