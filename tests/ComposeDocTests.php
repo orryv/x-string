@@ -2,46 +2,71 @@
 
 // Run `php tests/ComposeDocTests.php` to regenerate the docs in README.md
 
+$max_version = 1.1;
 $base_path = __DIR__ . '/../';
 $base_namespace = 'Orryv\\XString';
 
-removeDocsDir();
+$main_readme = file_get_contents($base_path . 'readme-v3.md');
 
-$iterator = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator($base_path, FilesystemIterator::SKIP_DOTS)
-);
+
+echo 'Readme: ' . strlen($main_readme) . ' bytes', PHP_EOL;
+
+$lines = explode("\n", $main_readme);
+
+removeDocsDir();
 
 $zero_count = 0;
 
-foreach ($iterator as $file) {
-    if (!$file->isFile()) {
+foreach($lines as $line) {
+    if(!str_starts_with($line, '| [`')) {
         continue;
     }
 
-    if (strtolower($file->getExtension()) !== 'md') {
+    // Extract doc url
+    preg_match('/\|\s+\[`(.*?)`\]\((.*?)\)\s+\|/', $line, $matches);
+    if(count($matches) < 3) {
+        echo '  Could not parse line: ' . $line, PHP_EOL;
         continue;
     }
 
-    $doc_path = substr($file->getPathname(), strlen($base_path));
+    $method_name = $matches[1];
+    $doc_path = $matches[2];
+    echo 'Method: ' . $method_name .  ' (' . $doc_path . ')', PHP_EOL;
 
-    echo 'Processing: ' . $doc_path . PHP_EOL;
+    // Check version (second column) version is a float number
+    $version = substr($line, strpos($line, '|', 1) + 1);
+    $version = substr($version, 0, strpos($version, '|'));
+    $version = trim($version);
+    
+    if($version > $max_version) {
+        echo '  Skipping version ' . $version . ' (max ' . $max_version . ')', PHP_EOL;
+        continue;
+    }
+    
+    // Load doc file
+    $doc_file = $base_path . $doc_path;
+    if(!file_exists($doc_file)) {
+        echo '  Doc file not found: ' . $doc_file, PHP_EOL;
+        continue;
+    }
 
-    $doc_content = file_get_contents($file->getPathname());
+    $doc_content = file_get_contents($doc_file);
+    $doc_lines = explode("\n", $doc_content);
 
     $blocks = extractTestBlocks($doc_content);
-
+    
     echo '  Found ' . count($blocks) . ' test blocks', PHP_EOL;
 
-    if (empty($blocks)) {
+    if(empty($blocks)) {
         $zero_count++;
-        continue;
     }
 
     $data = parseBlocks($blocks);
-    composeTestFile($data, $doc_path);
+    composeTestFile($data, $doc_path, $method_name);
+
 }
 
-echo PHP_EOL . 'Metrics: ' . $zero_count . ' markdown files with no tests', PHP_EOL;
+echo PHP_EOL . 'Metrics: ' . $zero_count . ' methods with no tests', PHP_EOL;
 
 function extractTestBlocks(string $doc_content): array {
     $blocks = [];
@@ -143,31 +168,30 @@ function parseBlocks(array $blocks): array {
     return $data;
 }
 
-function composeTestFile(array $data, string $doc_path): void
+function composeTestFile(array $data, string $doc_path, string $method): void 
 {
     global $base_namespace;
 
-    $normalized_path = ltrim($doc_path, '/');
-    $path_info = pathinfo($normalized_path);
+    $name = substr(basename($doc_path), 0, -3);
 
-    $name = $path_info['filename'] ?? '';
-
-    $relative_directory = $path_info['dirname'] ?? '';
-    if ($relative_directory === '.') {
-        $relative_directory = '';
+    if($method !== $name) {
+        echo 'ERROR: method name (' . $method . ') does not match doc file name (' . $name . ' -> ' . $doc_path . ')' . PHP_EOL;
+        return;
     }
 
-    $name = pascalCase($name);
+    $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
+    // first character to upper
+    $name = ucfirst($name);
 
     $namespace_segments = [];
-    $trimmed_path = trim($relative_directory, '/');
+    $trimmed_path = trim($path, '/');
     if ($trimmed_path !== '') {
         foreach (explode('/', $trimmed_path) as $segment) {
             if ($segment === '') {
                 continue;
             }
 
-            $namespace_segments[] = pascalCase($segment);
+            $namespace_segments[] = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $segment)));
         }
     }
 
@@ -176,11 +200,7 @@ function composeTestFile(array $data, string $doc_path): void
         $namespace .= '\\' . implode('\\', $namespace_segments);
     }
 
-    $relative_directory_path = $relative_directory === ''
-        ? ''
-        : str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative_directory) . DIRECTORY_SEPARATOR;
-
-    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $relative_directory_path . $name . 'Test.php';
+    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $path . $name . 'Test.php';
     $dir = dirname($new_path);
     // echo '  New path: ' . $new_path . PHP_EOL;
     if(!is_dir($dir)) {
@@ -209,7 +229,7 @@ function composeTestFile(array $data, string $doc_path): void
     $output .= "final class " . $name . "Test extends TestCase\n";
     $output .= "{\n";
     foreach($data['tests'] as $test_name => $test_code) {
-        $method_name = 'test' . pascalCase($test_name);
+        $method_name = 'test' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $test_name)));
         $output .= "    public function " . $method_name . "(): void\n";
         $output .= "    {\n";
         $test_lines = explode("\n", trim($test_code));
@@ -244,39 +264,6 @@ function removeDocsDir(): void {
         }
         rmdir($dir);
     }
-}
-
-function pascalCase(string $value): string
-{
-    $value = trim($value);
-
-    if ($value === '') {
-        return 'Doc';
-    }
-
-    $normalized = preg_replace('/[^A-Za-z0-9]+/', ' ', $value);
-    $chunks = preg_split('/\s+/', $normalized);
-
-    $segments = [];
-    foreach ($chunks as $chunk) {
-        if ($chunk === '') {
-            continue;
-        }
-
-        $subSegments = preg_split('/(?<=[a-z0-9])(?=[A-Z])/', $chunk);
-        foreach ($subSegments as $sub) {
-            if ($sub === '') {
-                continue;
-            }
-            $segments[] = $sub;
-        }
-    }
-
-    if (empty($segments)) {
-        return 'Doc';
-    }
-
-    return implode('', array_map(fn($segment) => ucfirst(strtolower($segment)), $segments));
 }
 
 ?>
