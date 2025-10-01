@@ -2,71 +2,28 @@
 
 // Run `php tests/ComposeDocTests.php` to regenerate the docs in README.md
 
-$max_version = 1.1;
 $base_path = __DIR__ . '/../';
 $base_namespace = 'Orryv\\XString';
 $exclude = [
     '/vendor/',
 ];
 
-$main_readme = file_get_contents($base_path . 'readme-v3.md');
-
-
-echo 'Readme: ' . strlen($main_readme) . ' bytes', PHP_EOL;
-
-$lines = explode("\n", $main_readme);
-
 removeDocsDir();
 
 $zero_count = 0;
 
-foreach($lines as $line) {
-    if(!str_starts_with($line, '| [`')) {
-        continue;
-    }
+foreach (findMarkdownFiles($base_path, $exclude) as $doc_path => $doc_file) {
+    echo 'File: ' . $doc_path . PHP_EOL;
 
-    // Extract doc url
-    preg_match('/\|\s+\[`(.*?)`\]\((.*?)\)\s+\|/', $line, $matches);
-    if(count($matches) < 3) {
-        echo '  Could not parse line: ' . $line, PHP_EOL;
-        continue;
-    }
-
-    $method_name = $matches[1];
-    $doc_path = $matches[2];
-    echo 'Method: ' . $method_name .  ' (' . $doc_path . ')', PHP_EOL;
-
-    foreach ($exclude as $excludedPath) {
-        $isDirectory = str_ends_with($excludedPath, '/');
-        if (($isDirectory && str_starts_with($doc_path, $excludedPath)) ||
-            (!$isDirectory && $doc_path === $excludedPath)) {
-            echo '  Skipping excluded path: ' . $doc_path . PHP_EOL;
-            continue 2;
-        }
-    }
-
-    // Check version (second column) version is a float number
-    $version = substr($line, strpos($line, '|', 1) + 1);
-    $version = substr($version, 0, strpos($version, '|'));
-    $version = trim($version);
-    
-    if($version > $max_version) {
-        echo '  Skipping version ' . $version . ' (max ' . $max_version . ')', PHP_EOL;
-        continue;
-    }
-    
-    // Load doc file
-    $doc_file = $base_path . $doc_path;
     if(!file_exists($doc_file)) {
         echo '  Doc file not found: ' . $doc_file, PHP_EOL;
         continue;
     }
 
     $doc_content = file_get_contents($doc_file);
-    $doc_lines = explode("\n", $doc_content);
 
     $blocks = extractTestBlocks($doc_content);
-    
+
     echo '  Found ' . count($blocks) . ' test blocks', PHP_EOL;
 
     if(empty($blocks)) {
@@ -74,11 +31,11 @@ foreach($lines as $line) {
     }
 
     $data = parseBlocks($blocks);
-    composeTestFile($data, $doc_path, $method_name);
+    composeTestFile($data, $doc_path);
 
 }
 
-echo PHP_EOL . 'Metrics: ' . $zero_count . ' methods with no tests', PHP_EOL;
+echo PHP_EOL . 'Metrics: ' . $zero_count . ' files with no tests', PHP_EOL;
 
 function extractTestBlocks(string $doc_content): array {
     $blocks = [];
@@ -180,18 +137,20 @@ function parseBlocks(array $blocks): array {
     return $data;
 }
 
-function composeTestFile(array $data, string $doc_path, string $method): void 
+function composeTestFile(array $data, string $doc_path): void
 {
     global $base_namespace;
 
     $name = substr(basename($doc_path), 0, -3);
 
-    if($method !== $name) {
-        echo 'ERROR: method name (' . $method . ') does not match doc file name (' . $name . ' -> ' . $doc_path . ')' . PHP_EOL;
-        return;
+    $directoryPath = dirname($doc_path);
+    $path = '';
+    if ($directoryPath !== '' && $directoryPath !== '.') {
+        $normalizedDirectory = trim(str_replace('\\', '/', $directoryPath), '/');
+        if ($normalizedDirectory !== '') {
+            $path = $normalizedDirectory . '/';
+        }
     }
-
-    $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
     // first character to upper
     $name = ucfirst($name);
 
@@ -212,7 +171,7 @@ function composeTestFile(array $data, string $doc_path, string $method): void
         $namespace .= '\\' . implode('\\', $namespace_segments);
     }
 
-    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . $path . $name . 'Test.php';
+    $new_path = __DIR__ . DIRECTORY_SEPARATOR . 'Docs' . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path) . $name . 'Test.php';
     $dir = dirname($new_path);
     // echo '  New path: ' . $new_path . PHP_EOL;
     if(!is_dir($dir)) {
@@ -276,6 +235,51 @@ function removeDocsDir(): void {
         }
         rmdir($dir);
     }
+}
+
+function findMarkdownFiles(string $base_path, array $exclude): array {
+    $files = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($base_path, RecursiveDirectoryIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (!$file->isFile()) {
+            continue;
+        }
+
+        $relativePath = str_replace('\\', '/', substr($file->getPathname(), strlen($base_path)));
+
+        if (!str_ends_with(strtolower($relativePath), '.md')) {
+            continue;
+        }
+
+        if (isExcludedPath($relativePath, $exclude)) {
+            continue;
+        }
+
+        $files[$relativePath] = $file->getPathname();
+    }
+
+    ksort($files);
+
+    return $files;
+}
+
+function isExcludedPath(string $relativePath, array $exclude): bool {
+    foreach ($exclude as $excludedPath) {
+        $isDirectory = str_ends_with($excludedPath, '/');
+        if ($isDirectory) {
+            if (str_starts_with($relativePath, ltrim($excludedPath, '/'))) {
+                return true;
+            }
+        } elseif ($relativePath === ltrim($excludedPath, '/')) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 ?>
