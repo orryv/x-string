@@ -1,5 +1,7 @@
 # XString::replace()
 
+<!-- skip-url-warning -->[bla](codex/bla.md)
+
 ## Table of Contents
 - [XString::replace()](#xstringreplace)
   - [Table of Contents](#table-of-contents)

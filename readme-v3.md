@@ -71,6 +71,7 @@ A class to manipulate strings. Uses __toString() to convert to string when neede
 
 ### Setup
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/x-string/methods/new.md) | 1.0 | `public static function new(Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string> $data = ''): self`<br>Create a new instance of XString. You can provide a string, an array of strings, a Newline object, an HtmlTag object, or a Regex object. If an array is provided, it will be joined into a single string. If no data is provided, it defaults to an empty string. |
@@ -83,6 +84,7 @@ A class to manipulate strings. Uses __toString() to convert to string when neede
 
 Will throw if internal string is not empty (new($data) with $data not empty.)
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`rand`](docs/x-string/methods/rand.md) | 1.0 | `public static function rand(int $length, string $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'): self`<br>Create a random string of a given length using the provided characters. |
@@ -100,6 +102,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Manipulation
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`append`](docs/x-string/methods/append.md) | 1.0 | `public function append(Newline\|HtmlTag\|Regex\|Stringable\|string\|array<Newline\|HtmlTag\|Regex\|Stringable\|string> $data): self`<br>Append a string to the end of the current string. |
@@ -148,6 +151,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Strip / Remove
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`strip`](docs/x-string/methods/strip.md) | 1.0 | `public function strip(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $search, null\|int $limit = null, $reversed = false): self`<br>Remove all occurrences of a specific string from the current string. By default it removes all occurrences, but you can limit the number of removals by setting the $limit parameter. If $reversed is true, it removes from the end of the string. |
@@ -157,6 +161,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Affixing
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`ensurePrefix`](docs/x-string/methods/ensurePrefix.md) | 1.0 | `public function ensurePrefix(Newline\|HtmlTag\|string $prefix): self`<br>Ensure the string starts with the specified prefix. If it doesn't, the prefix is added. |
@@ -170,6 +175,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Other methods
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`split`](docs/x-string/methods/split.md) | 1.0 | `public function split(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $delimiter, null\| int $limit = null): array`<br>Split the string into an array using the specified delimiter. If $limit is provided, it limits the number of splits. If an array is provided it will act as an OR. |
@@ -196,6 +202,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Encoding methods
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`transliterate`](docs/x-string/methods/transliterate.md) | 1.0 | `public function transliterate(string $to = 'ASCII//TRANSLIT'): self`<br>Transliterate the string to a different character set. Default is 'ASCII//TRANSLIT'. |
@@ -209,6 +216,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Encryption and Hashing
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`base64Encode`](docs/x-string/methods/base64Encode.md) | 1.0 | `public function base64Encode(): self`<br>Base64-encode the string. |
@@ -224,6 +232,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 ### Codecs
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`htmlEscape`](docs/x-string/methods/htmlEscape.md) | 1.0 | `public function htmlEscape(int $flags = ENT_QUOTES \| ENT_SUBSTITUTE \| ENT_HTML5, string $encoding = 'UTF-8'): self`<br>Escape HTML special characters in the string. You can specify flags and encoding. |
@@ -238,6 +247,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 
 Used to tell search arguments in other methods that you want to search for newlines.
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/newline/methods/new.md) | 1.0 | `public static function new(null\|string $newline = null): self`<br>Create a new Newline instance. Default newline is *any*. |
@@ -250,12 +260,14 @@ Used to tell search arguments in other methods that you want to search for newli
 
 Used to tell search arguments in other methods that you want to search for a regex pattern.
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/regex/methods/new.md) | 1.0 | `public static function new(string $pattern, int $modifiers = 0): self`<br>Create a new Pattern instance. $modifiers is a bitmask of regex modifiers (ex. Pattern::MODIFIER_CASE_INSENSITIVE). |
 
 ## HtmlTag class methods
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/html-tag/methods/new.md) | 1.0 | `public static function new(string $tag_name, bool $self_closing = false, bool $case_sensitive = false): self`<br>Create a new HtmlTag instance. |
@@ -268,6 +280,7 @@ Used to tell search arguments in other methods that you want to search for a reg
 
 ## XStringType (factory) class
 
+<!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`XStringType::newline()`](docs/x-string-type/methods/newline.md) | 1.0 | `public static function newline(null\|string $newline = null): Newline`<br>Create a new Newline instance. Default newline is *any*. |
