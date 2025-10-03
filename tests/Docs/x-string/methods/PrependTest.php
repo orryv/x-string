@@ -36,7 +36,7 @@ final class PrependTest extends TestCase
             Regex::new('/^Title:/'),
             Newline::new(),
         ]);
-        self::assertSame("<section id=\"intro\">/^Title:/\nContent", (string) $updated);
+        self::assertSame('<section id="intro">/^Title:/' . PHP_EOL . 'Content', (string) $updated);
     }
 
     public function testPrependImmutability(): void

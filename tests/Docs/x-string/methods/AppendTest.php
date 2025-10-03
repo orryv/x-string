@@ -36,7 +36,7 @@ final class AppendTest extends TestCase
             HtmlTag::new('span')->withClass('highlight'),
             Regex::new('/[a-z]+/i'),
         ]);
-        self::assertSame("Pattern\n<span class=\"highlight\">/[a-z]+/i", (string) $updated);
+        self::assertSame('Pattern' . PHP_EOL . '<span class="highlight">/[a-z]+/i', (string) $updated);
     }
 
     public function testAppendImmutability(): void

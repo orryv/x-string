@@ -49,4 +49,32 @@ final class WithModeTest extends TestCase
         $xstring->withMode('codepoints', '');
     }
 
+    public function testWithModeCaseInsensitive(): void
+    {
+        $xstring = XString::new('é');
+        $bytes = $xstring->withMode('BYTES');
+        self::assertSame(2, $bytes->length());
+        self::assertNotSame($xstring, $bytes);
+    }
+
+    public function testWithModeEncodingLength(): void
+    {
+        $word = XString::new('Ångström');
+        $utf8 = $word->withMode('codepoints', 'UTF-8');
+        $iso = $word->withMode('codepoints', 'ISO-8859-1');
+        self::assertSame(8, $utf8->length());
+        self::assertSame(10, $iso->length());
+        self::assertSame('Ångström', (string) $word);
+    }
+
+    public function testWithModeRoundTrip(): void
+    {
+        $emoji = XString::new('👩‍💻');
+        $bytes = $emoji->withMode('bytes');
+        $graphemes = $bytes->withMode('graphemes');
+        self::assertSame(11, $bytes->length());
+        self::assertSame(1, $graphemes->length());
+        self::assertSame('👩‍💻', (string) $emoji);
+    }
+
 }

@@ -33,4 +33,22 @@ final class AsCodepointsTest extends TestCase
         $xstring->asCodepoints('');
     }
 
+    public function testAsCodepointsImmutable(): void
+    {
+        $emoji = XString::new('👩‍💻');
+        $codepoints = $emoji->asCodepoints();
+        self::assertSame(3, $codepoints->length());
+        self::assertSame(1, $emoji->length());
+        self::assertNotSame($emoji, $codepoints);
+    }
+
+    public function testAsCodepointsTrimEncoding(): void
+    {
+        $value = XString::new('Résumé');
+        $codepoints = $value->asCodepoints("  UTF-8  ");
+        $lower = $codepoints->toLower();
+        self::assertSame('résumé', (string) $lower);
+        self::assertSame('Résumé', (string) $value);
+    }
+
 }

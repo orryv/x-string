@@ -15,6 +15,8 @@
     - [Switch encoding for downstream operations](#switch-encoding-for-downstream-operations)
     - [Invalid mode throws an exception](#invalid-mode-throws-an-exception)
     - [Empty encoding throws an exception](#empty-encoding-throws-an-exception)
+    - [Mode names are case-insensitive](#mode-names-are-case-insensitive)
+    - [Round-trip between byte and grapheme views](#round-trip-between-byte-and-grapheme-views)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -135,6 +137,49 @@ $xstring = XString::new('example');
 
 #Test: $this->expectException(InvalidArgumentException::class);
 $xstring->withMode('codepoints', '');
+```
+
+### Mode names are case-insensitive
+
+<!-- test:with-mode-case-insensitive -->
+```php
+use Orryv\XString;
+
+$xstring = XString::new('é');
+$bytes = $xstring->withMode('BYTES');
+
+#Test: self::assertSame(2, $bytes->length());
+#Test: self::assertNotSame($xstring, $bytes);
+```
+
+### Encoding influences multibyte calculations
+
+<!-- test:with-mode-encoding-length -->
+```php
+use Orryv\XString;
+
+$word = XString::new('Ångström');
+$utf8 = $word->withMode('codepoints', 'UTF-8');
+$iso = $word->withMode('codepoints', 'ISO-8859-1');
+
+#Test: self::assertSame(8, $utf8->length());
+#Test: self::assertSame(10, $iso->length());
+#Test: self::assertSame('Ångström', (string) $word);
+```
+
+### Round-trip between byte and grapheme views
+
+<!-- test:with-mode-round-trip -->
+```php
+use Orryv\XString;
+
+$emoji = XString::new('👩‍💻');
+$bytes = $emoji->withMode('bytes');
+$graphemes = $bytes->withMode('graphemes');
+
+#Test: self::assertSame(11, $bytes->length());
+#Test: self::assertSame(1, $graphemes->length());
+#Test: self::assertSame('👩‍💻', (string) $emoji);
 ```
 
 ## One-line API table entry

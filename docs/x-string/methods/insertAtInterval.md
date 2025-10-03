@@ -124,7 +124,7 @@ use Orryv\XString;
 $value = XString::new('line1line2line3');
 $result = $value->insertAtInterval(Newline::new(), 5);
 
-#Test: self::assertSame("line1\nline2\nline3", (string) $result);
+#Test: self::assertSame('line1' . PHP_EOL . 'line2' . PHP_EOL . 'line3', (string) $result);
 ```
 
 ### Empty strings remain unchanged

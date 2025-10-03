@@ -21,7 +21,7 @@ final class Newline implements Stringable
 
     public static function new(?string $newline = null): self
     {
-        return new self($newline ?? "\n");
+        return new self($newline ?? PHP_EOL);
     }
 
     public function startsWith(string $prefix, bool $trim = false): self

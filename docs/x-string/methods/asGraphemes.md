@@ -13,6 +13,8 @@
     - [Normalize to grapheme mode](#normalize-to-grapheme-mode)
     - [Alias equivalence with `withMode()`](#alias-equivalence-with-withmode)
     - [Empty encoding throws an exception](#empty-encoding-throws-an-exception)
+    - [Immutability when resetting to graphemes](#immutability-when-resetting-to-graphemes)
+    - [Encoding labels are trimmed](#encoding-labels-are-trimmed)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -97,6 +99,35 @@ $xstring = XString::new('example');
 
 #Test: $this->expectException(InvalidArgumentException::class);
 $xstring->asGraphemes('');
+```
+
+### Immutability when resetting to graphemes
+
+<!-- test:as-graphemes-immutable -->
+```php
+use Orryv\XString;
+
+$emoji = XString::new('👩‍💻');
+$codepoints = $emoji->asCodepoints();
+$graphemes = $codepoints->asGraphemes();
+
+#Test: self::assertSame(3, $codepoints->length());
+#Test: self::assertSame(1, $graphemes->length());
+#Test: self::assertNotSame($codepoints, $graphemes);
+```
+
+### Encoding labels are trimmed
+
+<!-- test:as-graphemes-trim-encoding -->
+```php
+use Orryv\XString;
+
+$value = XString::new('Résumé');
+$graphemes = $value->asGraphemes('  UTF-8  ');
+$upper = $graphemes->toUpper();
+
+#Test: self::assertSame('RÉSUMÉ', (string) $upper);
+#Test: self::assertSame('Résumé', (string) $value);
 ```
 
 ## One-line API table entry

@@ -91,13 +91,13 @@ final class ReplaceTest extends TestCase
                 Newline::new()->startsWith('Line1', trim: true), // matches an entire line starting with "Line1" (ignoring indentation)
                 'Welcome!'
             );
-        self::assertSame("Welcome!\nHello, World!", (string) $xstring);
+        self::assertSame('Welcome!' . PHP_EOL . 'Hello, World!', (string) $xstring);
         $xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
             ->replace(
                 Newline::new()->startsWith('Line1', trim: true), // replaces each line that begins with the given prefix
                 'Welcome!'
             );
-        self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring);
+        self::assertSame('Line0' . PHP_EOL . 'Welcome!' . PHP_EOL . 'Hello, World!', (string) $xstring);
     }
 
 }

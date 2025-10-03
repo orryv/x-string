@@ -13,6 +13,8 @@
     - [Count Unicode code points](#count-unicode-code-points)
     - [Alias equivalence with `withMode()`](#alias-equivalence-with-withmode)
     - [Empty encoding throws an exception](#empty-encoding-throws-an-exception)
+    - [Immutability when switching to code points](#immutability-when-switching-to-code-points)
+    - [Encoding labels are trimmed](#encoding-labels-are-trimmed)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -97,6 +99,34 @@ $xstring = XString::new('example');
 
 #Test: $this->expectException(InvalidArgumentException::class);
 $xstring->asCodepoints('');
+```
+
+### Immutability when switching to code points
+
+<!-- test:as-codepoints-immutable -->
+```php
+use Orryv\XString;
+
+$emoji = XString::new('👩‍💻');
+$codepoints = $emoji->asCodepoints();
+
+#Test: self::assertSame(3, $codepoints->length());
+#Test: self::assertSame(1, $emoji->length());
+#Test: self::assertNotSame($emoji, $codepoints);
+```
+
+### Encoding labels are trimmed
+
+<!-- test:as-codepoints-trim-encoding -->
+```php
+use Orryv\XString;
+
+$value = XString::new('Résumé');
+$codepoints = $value->asCodepoints("  UTF-8  ");
+$lower = $codepoints->toLower();
+
+#Test: self::assertSame('résumé', (string) $lower);
+#Test: self::assertSame('Résumé', (string) $value);
 ```
 
 ## One-line API table entry

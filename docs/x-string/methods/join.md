@@ -102,7 +102,7 @@ $parts = [
     'Line 3',
 ];
 $result = XString::join($parts);
-#Test: self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
+#Test: self::assertSame('Line 1' . PHP_EOL . 'Line 2<br />' . "\r\n" . 'Line 3', (string) $result);
 ```
 
 ### Joining an empty array returns an empty string
