@@ -2,6 +2,8 @@
 
 // TODO: Search src/ (and possibly other folders) for methods without docblocks, docblocks of public methods must also have an @see (dedicated documentation) tag
 // TODO: Search in the code for public methods that are not in a method-list in any doc file
+// TODO: accept a error and warning limit, and return non-zero exit code if exceeded
+// TODO: put into own project and make installable via composer, and make config with args possible (root folder, base namespace, exclude paths, etc)
 
 
 ComposeDocTests::run(__DIR__ . '/../', null, 'Orryv\\XString');
