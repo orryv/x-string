@@ -159,28 +159,58 @@ class ComposeDocTests
     private function processTestBlocks(string $content, string $rel_path): void
     {
         $blocks = [];
-        preg_match_all('/^<!--\h*test:\h*([A-Za-z0-9-]+)\h*-->\h*\R[ \t]*```(?:[a-z]+)?\h*$/mi', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
-        preg_match_all('/^<!--\s*test:[^\r\n]*?-->/mi', $content, $raw_markers, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
-
-        if(count($raw_markers) !== count($matches)) {
-            $offset = $raw_markers[0][0][1] ?? 0;
-            $line = 1 + preg_match_all('/\R/', substr($content, 0, $offset));
-            $this->error('Found "<!-- test:... -->" but something is wrong with the formatting. Either the name has invalid characters (<!-- test:[A-Za-z0-9-] -->) or the code block is missing on the line after.', $line);
+        $lines = preg_split('/\r\n|\n|\r/', $content);
+        if ($lines === false) {
+            $this->error('Unable to read documentation content.', null);
             return;
         }
 
-        foreach ($matches as $match) {
-            $test_name = $match[1][0];
-            $start = $match[0][1] + strlen($match[0][0]);
+        $line_count = count($lines);
 
-            if (!preg_match('/^\h*```\h*$/m', $content, $mclose, PREG_OFFSET_CAPTURE, $start)) {
-                $line = 1 + preg_match_all('/\R/', substr($content, 0, $match[0][1]));
-                $this->error('Opening ``` without a closing ```.', $line);
+        for ($index = 0; $index < $line_count; $index++) {
+            $line = $lines[$index];
+
+            if (preg_match('/^\s*<!--\s*test:\s*([A-Za-z0-9-]+)\s*-->$/', $line, $marker_match) !== 1) {
+                if (preg_match('/^\s*<!--\s*test:/', $line) === 1) {
+                    $this->error('Found "<!-- test:... -->" but something is wrong with the formatting. Either the name has invalid characters (<!-- test:[A-Za-z0-9-] -->) or the code block is missing on the line after.', $index + 1);
+                }
+
                 continue;
             }
 
-            $end = $mclose[0][1];
-            $blocks[$test_name] = trim(substr($content, $start, $end - $start));
+            $test_name = $marker_match[1];
+
+            if ($index + 1 >= $line_count) {
+                $this->error('Found "<!-- test:... -->" but the code block is missing on the line after.', $index + 1);
+                break;
+            }
+
+            $fence_line = $lines[$index + 1];
+            if (preg_match('/^\s*```(?:[A-Za-z0-9_-]+)?\s*$/', $fence_line) !== 1) {
+                $this->error('Found "<!-- test:... -->" but the code block is missing on the line after.', $index + 1);
+                continue;
+            }
+
+            $block_lines = [];
+            $found_closing = false;
+
+            for ($block_index = $index + 2; $block_index < $line_count; $block_index++) {
+                $current = $lines[$block_index];
+                if (preg_match('/^\s*```\s*$/', $current) === 1) {
+                    $found_closing = true;
+                    break;
+                }
+
+                $block_lines[] = rtrim($current, "\r");
+            }
+
+            if (!$found_closing) {
+                $this->error('Opening ``` without a closing ```.', $index + 1);
+                continue;
+            }
+
+            $blocks[$test_name] = rtrim(implode("\n", $block_lines));
+            $index = $block_index;
         }
 
         echo '  Found ' . count($blocks) . ' test blocks', PHP_EOL;
