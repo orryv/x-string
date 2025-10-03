@@ -207,7 +207,7 @@ $xstring = XString::new(" Line1 - blabla\nHello, World!")
         'Welcome!'
     );
 
-#Test: self::assertSame("Welcome!\nHello, World!", (string) $xstring);
+#Test: self::assertSame('Welcome!' . PHP_EOL . 'Hello, World!', (string) $xstring);
 
 
 $xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
@@ -216,7 +216,7 @@ $xstring = XString::new("Line0\n Line1 - blabla\nHello, World!")
         'Welcome!'
     );
 
-#Test: self::assertSame("Line0\nWelcome!\nHello, World!", (string) $xstring);
+#Test: self::assertSame('Line0' . PHP_EOL . 'Welcome!' . PHP_EOL . 'Hello, World!', (string) $xstring);
 ```
 
 

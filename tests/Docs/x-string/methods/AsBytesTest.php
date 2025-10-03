@@ -34,4 +34,22 @@ final class AsBytesTest extends TestCase
         $xstring->asBytes('');
     }
 
+    public function testAsBytesImmutable(): void
+    {
+        $emoji = XString::new('👩‍💻');
+        $bytes = $emoji->asBytes();
+        self::assertSame(11, $bytes->length());
+        self::assertSame(1, $emoji->length());
+        self::assertNotSame($emoji, $bytes);
+    }
+
+    public function testAsBytesTrimEncoding(): void
+    {
+        $value = XString::new('Résumé');
+        $bytes = $value->asBytes('  UTF-8  ');
+        $upper = $bytes->toUpper();
+        self::assertSame('RÉSUMÉ', (string) $upper);
+        self::assertSame('Résumé', (string) $value);
+    }
+
 }
