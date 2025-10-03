@@ -95,7 +95,7 @@ class ComposeDocTests
                 }
                 $this->processTestBlocks($content, $rel_path);
                 // exit;
-                // $this->processMethodList($content);
+                $this->processMethodList($content);
             }
         }
     }
