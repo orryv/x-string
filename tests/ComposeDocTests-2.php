@@ -1,7 +1,5 @@
 <?php
 
-use PHPUnit\Event\Runtime\PHP;
-
 ComposeDocTests::run(__DIR__ . '/../');
 
 
@@ -13,15 +11,21 @@ class ComposeDocTests
     private ?string $current_file = null;
     private array $processed_files = [];
 
+    private string $base_namespace = 'Orryv\\XString';
+
     private int $method_list_missing_count = 0;
     private int $all_urls_missing_count = 0;
 
-    public static function run($root_folder, $exclude = null): void 
+    public static function run($root_folder, $exclude = null, ?string $base_namespace = null): void
     {
         $instance = new self();
 
         if($exclude !== null) {
             $instance->exclude = array_merge($exclude, ['/vendor/', '/.git/']);
+        }
+
+        if ($base_namespace !== null) {
+            $instance->base_namespace = $base_namespace;
         }
 
         $instance->normalizeExcludes();
@@ -244,9 +248,8 @@ class ComposeDocTests
 
     private function composeTestFile(array $data, string $doc_path): void
     {
-        global $base_namespace;
-
         $name = substr(basename($doc_path), 0, -3);
+        $name = $this->studly($name);
 
         $directory = str_replace(['\\', '/'], '/', dirname($doc_path));
         $relative_path = '';
@@ -257,9 +260,6 @@ class ComposeDocTests
             }
             $relative_path = $relative;
         }
-
-        // first character to upper
-        $name = ucfirst($name);
 
         $namespace_segments = [];
         $trimmed_path = trim($relative_path, '/');
@@ -273,7 +273,7 @@ class ComposeDocTests
             }
         }
 
-        $namespace = $base_namespace . '\\Tests\\Docs';
+        $namespace = $this->base_namespace . '\\Tests\\Docs';
         if (!empty($namespace_segments)) {
             $namespace .= '\\' . implode('\\', $namespace_segments);
         }
@@ -309,7 +309,7 @@ class ComposeDocTests
         $output .= "final class " . $name . "Test extends TestCase\n";
         $output .= "{\n";
         foreach($data['tests'] as $test_name => $test_code) {
-            $method_name = 'test' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $test_name)));
+            $method_name = 'test' . $this->studly($test_name);
             $output .= "    public function " . $method_name . "(): void\n";
             $output .= "    {\n";
             $test_lines = explode("\n", trim($test_code));
@@ -327,6 +327,15 @@ class ComposeDocTests
         }
 
         file_put_contents($new_path, $output);
+    }
+
+    private function studly(string $value): string
+    {
+        $value = str_replace(['-', '_'], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', trim($value));
+        $value = ucwords($value);
+
+        return str_replace(' ', '', $value);
     }
 
     private function processMethodList(string $content): void

@@ -283,7 +283,7 @@ Here are some examples of how to use the `XString` class:
 use Orryv\XString;
 
 // Create a new XString instance
-$str = new XString(" Hello, World! \n");
+$str = XString::new(" Hello, World! \n");
 #Test: self::assertTrue($str instanceof XString);
 #Test: self::assertEquals(" Hello, World! \n", (string)$str);
 
@@ -305,11 +305,11 @@ $str = <<<EOT
 Hello, World!
 EOT;
 
-$string = new XString($str);
+$string = XString::new($str);
 #Test: self::assertEquals($str, (string)$string);
 
 // Remove first line (one way to do it)
-$string->after(Newline::new()->startsWith('Line1', trim:true));
+$string = $string->after(Newline::new()->startsWith('Line1', trim:true));
 //Same as: $string->after(XStringType::newline()->startsWith('Line1', trim:true));
 echo $string; // Outputs: "Hello, World!"
 #Test: self::assertEquals("Hello, World!", (string)$string);
