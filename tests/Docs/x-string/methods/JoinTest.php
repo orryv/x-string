@@ -37,7 +37,7 @@ final class JoinTest extends TestCase
             'Line 3',
         ];
         $result = XString::join($parts);
-        self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
+        self::assertSame('Line 1' . PHP_EOL . 'Line 2<br />' . "\r\n" . 'Line 3', (string) $result);
     }
 
     public function testJoinEmpty(): void

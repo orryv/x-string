@@ -106,7 +106,7 @@ $fragments = [
     'Line 3',
 ];
 $result = XString::implode($fragments);
-#Test: self::assertSame("Line 1\nLine 2<br />\r\nLine 3", (string) $result);
+#Test: self::assertSame('Line 1' . PHP_EOL . 'Line 2<br />' . "\r\n" . 'Line 3', (string) $result);
 ```
 
 ### An empty array results in an empty string

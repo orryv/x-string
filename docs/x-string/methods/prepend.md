@@ -97,7 +97,7 @@ $updated = $original->prepend([
     Regex::new('/^Title:/'),
     Newline::new(),
 ]);
-#Test: self::assertSame("<section id=\"intro\">/^Title:/\nContent", (string) $updated);
+#Test: self::assertSame('<section id="intro">/^Title:/' . PHP_EOL . 'Content', (string) $updated);
 ```
 
 ### Original instance stays unchanged

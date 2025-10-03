@@ -1137,7 +1137,11 @@ final class XString implements Stringable
 
         $sequence = [];
         foreach ($items as $item) {
-            $fragment = self::normalizeFragment($item);
+            if ($item instanceof Newline) {
+                $fragment = self::canonicalizeLineBreak((string) $item);
+            } else {
+                $fragment = self::normalizeFragment($item);
+            }
             if ($fragment === '') {
                 throw new InvalidArgumentException('Search sequence values cannot be empty.');
             }
@@ -1146,6 +1150,15 @@ final class XString implements Stringable
         }
 
         return $sequence;
+    }
+
+    private static function canonicalizeLineBreak(string $line_break): string
+    {
+        if ($line_break === '') {
+            return '';
+        }
+
+        return str_contains($line_break, "\n") ? "\n" : $line_break;
     }
 
     /**
@@ -1446,8 +1459,17 @@ final class XString implements Stringable
         $prefix = $config['prefix'];
         $trim = $config['trim'];
 
-        $segments = explode($line_break, $subject);
-        $has_trailing_break = str_ends_with($subject, $line_break);
+        $split_break = $line_break;
+        if (!str_contains($subject, $split_break)) {
+            $canonical_break = self::canonicalizeLineBreak($line_break);
+            if ($canonical_break !== '' && str_contains($subject, $canonical_break)) {
+                $split_break = $canonical_break;
+            }
+        }
+
+        $segments = explode($split_break, $subject);
+        $has_trailing_break = ($split_break !== '' && str_ends_with($subject, $split_break))
+            || ($line_break !== $split_break && str_ends_with($subject, $line_break));
         if ($has_trailing_break) {
             array_pop($segments);
         }
