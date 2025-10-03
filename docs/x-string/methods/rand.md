@@ -12,6 +12,10 @@
   - [Examples](#examples)
     - [10 random characters from 'abcdef'](#10-random-characters-from-abcdef)
     - [15 random alphanumeric characters (default)](#15-random-alphanumeric-characters-default)
+    - [Unicode character sets are supported](#unicode-character-sets-are-supported)
+    - [Invalid length throws an exception](#invalid-length-throws-an-exception)
+    - [Empty character set throws an exception](#empty-character-set-throws-an-exception)
+    - [Length remains stable across modes](#length-remains-stable-across-modes)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -35,8 +39,8 @@ Generates a cryptographically secure random string of the requested length using
 
 **Algorithm overview:**
 
-- Validates `$length >= 1` and that `$characters` contains at least one usable element (character/grapheme depending on mode).
-- Builds an indexable pool from `$characters` respecting the class mode (bytes/codepoints/graphemes).
+- Validates `$length >= 1` and that `$characters` contains at least one usable element (character or code point).
+- Builds an indexable pool from `$characters` using Unicode-aware splitting (`preg_split('//u')`). When the input is not valid UTF-8, it falls back to raw byte splitting.
 - Repeats `length` times:
   - Selects a secure random index via `random_int(0, poolSize - 1)`.
   - Appends the selected unit to the output buffer.
@@ -47,8 +51,8 @@ Generates a cryptographically secure random string of the requested length using
 
 - **Immutability.** Returns a new `XString` instance; the original data wrapper is never modified.
 - **Randomness.** Uses PHP's `random_int()` for secure random number generation.
-- **Mode and Encoding.** The generated string respects the mode (bytes, codepoints, graphemes) and encoding of the `XString` class.
-- **Character set semantics.** In grapheme/codepoint modes with UTF‑8 input, selection operates on **grapheme clusters** (e.g., emoji and accented characters count as one unit). In byte mode, selection operates on raw bytes.
+- **Mode and Encoding.** The resulting instance uses the library defaults (grapheme mode, UTF-8 encoding) but can be transformed afterwards with [`withMode()`](./withMode.md).
+- **Character set semantics.** Unicode character sets are split into individual **code points**. Combining marks are treated as separate candidates—include precomposed characters if you need them to stay together.
 - **Uniformity.** Selection is uniform over the provided set; if the set contains duplicate elements, duplicates naturally increase their selection probability.
 - **Performance tip.** For large `$length` and big character sets, precomputing the pool once avoids repeated splitting of `$characters`.
 
@@ -94,6 +98,55 @@ use Orryv\XString;
 $x = XString::rand(15);
 #Test: self::assertEquals(15, $x->length());
 #Test: self::assertMatchesRegularExpression('/^[0-9a-zA-Z]{15}$/', (string) $x);
+```
+
+### Unicode character sets are supported
+
+<!-- test:rand-unicode -->
+```php
+use Orryv\XString;
+
+$x = XString::rand(4, '🍎🍇🍉');
+
+#Test: self::assertSame(4, $x->length());
+#Test: self::assertMatchesRegularExpression('/^[🍎🍇🍉]{4}$/u', (string) $x);
+```
+
+### Invalid length throws an exception
+
+<!-- test:rand-invalid-length -->
+```php
+use Orryv\XString;
+use Orryv\XString\Exceptions\InvalidLengthException;
+
+#Test: $this->expectException(InvalidLengthException::class);
+XString::rand(0);
+```
+
+### Empty character set throws an exception
+
+<!-- test:rand-empty-characters -->
+```php
+use Orryv\XString;
+use Orryv\XString\Exceptions\EmptyCharacterSetException;
+
+#Test: $this->expectException(EmptyCharacterSetException::class);
+XString::rand(5, '');
+```
+
+### Length remains stable across modes
+
+<!-- test:rand-length-across-modes -->
+```php
+use Orryv\XString;
+
+$random = XString::rand(6, 'abcdef');
+$bytes = $random->withMode('bytes');
+$roundTrip = $bytes->withMode('graphemes');
+
+#Test: self::assertSame(6, $random->length());
+#Test: self::assertSame(6, $bytes->length());
+#Test: self::assertSame((string) $random, (string) $roundTrip);
 ```
 
 ## One-line API table entry

@@ -13,9 +13,11 @@
     - [Create from a plain string](#create-from-a-plain-string)
     - [Combine array values without mutating the source](#combine-array-values-without-mutating-the-source)
     - [Combine adapters, including HtmlTag](#combine-adapters-including-htmltag)
-    - [Combine adapters, including HtmlTag with end Tag](#combine-adapters-including-htmltag-with-end-tag)
+    - [Combine adapters, including HtmlTag with end tag support](#combine-adapters-including-htmltag-with-end-tag-support)
     - [Empty input defaults to an empty string](#empty-input-defaults-to-an-empty-string)
     - [Unsupported data in the array raises an exception](#unsupported-data-in-the-array-raises-an-exception)
+    - [Reuse an existing XString instance](#reuse-an-existing-xstring-instance)
+    - [Regex adapters integrate seamlessly](#regex-adapters-integrate-seamlessly)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -119,7 +121,7 @@ $result = XString::new($fragments);
 
 ### Combine adapters, including HtmlTag with end tag support
 
-<!-- test:xstring-new-html-tag -->
+<!-- test:xstring-new-html-tag-with-body -->
 ```php
 use Orryv\XString;
 use Orryv\XString\HtmlTag;
@@ -150,6 +152,32 @@ use Orryv\XString;
 
 #Test: $this->expectException(\InvalidArgumentException::class);
 XString::new(['valid', 123]);
+```
+
+### Reuse an existing XString instance
+
+<!-- test:xstring-new-from-xstring -->
+```php
+use Orryv\XString;
+
+$source = XString::new('immutable data');
+$clone = XString::new($source);
+
+#Test: self::assertSame('immutable data', (string) $clone);
+#Test: self::assertNotSame($source, $clone);
+```
+
+### Regex adapters integrate seamlessly
+
+<!-- test:xstring-new-regex -->
+```php
+use Orryv\XString;
+use Orryv\XString\Regex;
+
+$pattern = Regex::new('/foo/');
+$result = XString::new([$pattern, 'bar']);
+
+#Test: self::assertSame('/foo/bar', (string) $result);
 ```
 
 ## One-line API table entry

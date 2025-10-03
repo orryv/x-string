@@ -34,4 +34,23 @@ final class AsGraphemesTest extends TestCase
         $xstring->asGraphemes('');
     }
 
+    public function testAsGraphemesImmutable(): void
+    {
+        $emoji = XString::new('👩‍💻');
+        $codepoints = $emoji->asCodepoints();
+        $graphemes = $codepoints->asGraphemes();
+        self::assertSame(3, $codepoints->length());
+        self::assertSame(1, $graphemes->length());
+        self::assertNotSame($codepoints, $graphemes);
+    }
+
+    public function testAsGraphemesTrimEncoding(): void
+    {
+        $value = XString::new('Résumé');
+        $graphemes = $value->asGraphemes('  UTF-8  ');
+        $upper = $graphemes->toUpper();
+        self::assertSame('RÉSUMÉ', (string) $upper);
+        self::assertSame('Résumé', (string) $value);
+    }
+
 }
