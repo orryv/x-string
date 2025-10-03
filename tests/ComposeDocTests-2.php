@@ -26,6 +26,7 @@ class ComposeDocTests
 
         $instance->normalizeExcludes();
         $instance->handleRawRootFolder($root_folder);
+        $instance->removeDocsDir();
 
         // echo 'Root folder: ' . $root_folder . PHP_EOL;
         // exit;
@@ -35,11 +36,31 @@ class ComposeDocTests
         );
 
         $instance->walkItems($iterator);
+        exit;
         $instance->secondWalkItems($iterator);
 
         echo 'Finished processing.' . PHP_EOL;
         echo '  Method-list missing docs count: ' . $instance->method_list_missing_count . PHP_EOL;
         echo '  All URLs missing docs count: ' . $instance->all_urls_missing_count . PHP_EOL;
+    }
+
+    public function removeDocsDir(): void 
+    {
+        $dir = $this->root_folder . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'Docs';
+        echo 'Removing existing ' . $dir . ' directory if it exists...' . PHP_EOL;
+        if(is_dir($dir)) {
+            $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+            $files = new RecursiveIteratorIterator($it,
+                        RecursiveIteratorIterator::CHILD_FIRST);
+            foreach($files as $file) {
+                if ($file->isDir()){
+                    rmdir($file->getRealPath());
+                } else {
+                    unlink($file->getRealPath());
+                }
+            }
+            rmdir($dir);
+        }
     }
 
     public function walkItems($iterator, $current = null): void
@@ -68,8 +89,9 @@ class ComposeDocTests
                     echo '  ERROR: Could not read file, skipping', PHP_EOL;
                     continue;
                 }
-                $this->processTestBlocks($content);
-                $this->processMethodList($content);
+                $this->processTestBlocks($content, $rel_path);
+                // exit;
+                // $this->processMethodList($content);
             }
         }
     }
@@ -130,15 +152,167 @@ class ComposeDocTests
         $this->exclude = $normalized;
     }
 
-    private function processTestBlocks(string $content): void
+    private function processTestBlocks(string $content, string $rel_path): void
     {
-        preg_match_all('/^<!--\s*test:.*\R[ \t]*```/i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $blocks = [];
+        preg_match_all('/^<!--\h*test:\h*([A-Za-z0-9-]+)\h*-->\h*\R[ \t]*```(?:[a-z]+)?\b/mi', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        preg_match_all('/^<!--\s*test:[^\r\n]*?-->/mi', $content, $matches2, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
 
-        if(count($matches) > 0) {
-            echo '  Found ' . count($matches) . ' test blocks', PHP_EOL;
-            // exit;
-            // TODO Implement
+        if(count($matches2) != count($matches)) {
+            $this->error('Found "<!-- test:... -->" but something is wrong with the formatting. Either the name has invalid characters (<!-- test:[A-Za-z0-9-] -->) or the code block is missing on the line after.', $matches2[0][0][1]);
+            return;
         }
+
+        if(count($matches) > 0) {            
+            // Extract the code block:
+            $start = $matches[0][0][1] + strlen($matches[0][0][0]); // right after the opening fence
+            if (!preg_match('/^\h*```\h*$/m', $content, $mclose, PREG_OFFSET_CAPTURE, $start)) {
+                $this->error('Opening ``` without a closing ```.');
+                return;
+            }
+            $end = $mclose[0][1];
+
+            $blocks[] = trim(substr($content, $start, $end - $start));
+        }
+
+        echo '  Found ' . count($blocks) . ' test blocks', PHP_EOL;
+        if(str_starts_with($rel_path, DIRECTORY_SEPARATOR . 'docs' . DIRECTORY_SEPARATOR) && count($blocks) < 1) {
+            $this->warning('  No test blocks found in a doc file under /docs/.', null);
+        }
+
+        if(!empty($blocks)) {
+            $data = $this->parseBlocks($blocks);
+            $this->composeTestFile($data, $rel_path);
+        }
+
+    }
+
+    private function parseBlocks(array $blocks): array {
+        $data = [
+            'uses' => [],
+            'tests' => [],
+        ];
+
+        foreach ($blocks as $test_name => $block) {
+            $lines = explode("\n", $block);
+            foreach ($lines as $line) {
+
+                if(!isset($data['tests'][$test_name])){
+                    $data['tests'][$test_name] = '';
+                }
+
+                $trimmed = trim($line);
+                if(empty($trimmed)) {
+                    continue;
+                } else if(str_starts_with($trimmed, '//')) {
+                    continue;
+                }
+
+
+                $trimmedLine = ltrim($line);
+                $lowerTrimmed = strtolower($trimmedLine);
+
+                if (str_starts_with($lowerTrimmed, 'use ')) {
+                    $useLine = trim($trimmedLine);
+                    if (!str_ends_with($useLine, ';')) {
+                        $useLine .= ';';
+                    }
+
+                    $data['uses'][] = $useLine;
+                    continue;
+                } elseif (str_starts_with($lowerTrimmed, '#test:')) {
+                    $data['tests'][$test_name] .= trim(substr($trimmedLine, 6)) . "\n";
+                    continue;
+                } elseif(str_starts_with($lowerTrimmed, '# test:')) {
+                    $data['tests'][$test_name] .= trim(substr($trimmedLine, 7)) . "\n";
+                    continue;
+                }
+
+                if(str_starts_with(ltrim($line), '#')) {
+                    continue;
+                }
+
+                $data['tests'][$test_name] .= $line . "\n";
+            }
+        }
+        return $data;
+    }
+
+    private function composeTestFile(array $data, string $doc_path): void 
+    {
+        global $base_namespace;
+
+        $name = substr(basename($doc_path), 0, -3);
+
+        $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
+        // first character to upper
+        $name = ucfirst($name);
+
+        $namespace_segments = [];
+        $trimmed_path = trim($path, '/');
+        if ($trimmed_path !== '') {
+            foreach (explode('/', $trimmed_path) as $segment) {
+                if ($segment === '') {
+                    continue;
+                }
+
+                $namespace_segments[] = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $segment)));
+            }
+        }
+
+        $namespace = $base_namespace . '\\Tests\\Docs';
+        if (!empty($namespace_segments)) {
+            $namespace .= '\\' . implode('\\', $namespace_segments);
+        }
+
+        $new_path = $this->root_folder . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'Docs' . $path . $name . 'Test.php';
+        echo '  New path: ' . $new_path . PHP_EOL;
+        $dir = dirname($new_path);
+        // echo '  New path: ' . $new_path . PHP_EOL;
+        if(!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+
+        $output = "<?php\n";
+        $output .= "\n";
+        $output .= "declare(strict_types=1);\n";
+        $output .= "\n";
+        $output .= "namespace " . $namespace . ";\n";
+        $output .= "\n";
+        $output .= "use PHPUnit\\Framework\\TestCase;\n";
+        if(!empty($data['uses'])) {
+            $unique_uses = array_unique($data['uses']);
+            sort($unique_uses);
+            foreach($unique_uses as $use) {
+                if(empty(trim($use))) {
+                    continue;
+                }
+
+                $output .= $use . "\n";
+            }
+        }
+        $output .= "\n";
+        $output .= "final class " . $name . "Test extends TestCase\n";
+        $output .= "{\n";
+        foreach($data['tests'] as $test_name => $test_code) {
+            $method_name = 'test' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $test_name)));
+            $output .= "    public function " . $method_name . "(): void\n";
+            $output .= "    {\n";
+            $test_lines = explode("\n", trim($test_code));
+            foreach($test_lines as $line) {
+                $output .= "        " . rtrim($line) . "\n";
+            }
+            $output .= "    }\n\n";
+        }
+
+        $output .= "}\n";
+
+        if(empty($data['tests'])) {
+            echo 'WARNING: No tests found, skipping file creation', PHP_EOL;
+            return;
+        }
+
+        file_put_contents($new_path, $output);
     }
 
     private function processMethodList(string $content): void
@@ -285,10 +459,10 @@ class ComposeDocTests
         $RED   = "\033[1;31m"; // bright red
         $RESET = "\033[0m";
 
-        echo $RED . 'ERROR:' . $RESET . ' ' . $message . PHP_EOL;
-        echo '  In file: ' . $this->current_file . PHP_EOL;
+        echo $RED . '  ERROR:' . $RESET . ' ' . $message . PHP_EOL;
+        echo '    In file: ' . $this->current_file . PHP_EOL;
         if ($line !== null) {
-            echo '  At line: ' . $line . PHP_EOL;
+            echo '    At line: ' . $line . PHP_EOL;
         }
     }
 
@@ -317,10 +491,10 @@ class ComposeDocTests
 
         $COLOR = $truecolorLikely ? $ORANGE24 : $YELLOW;
 
-        echo $COLOR . 'WARNING:' . $RESET . ' ' . $message . PHP_EOL;
-        echo '  In file: ' . $this->current_file . PHP_EOL;
+        echo $COLOR . '  WARNING:' . $RESET . ' ' . $message . PHP_EOL;
+        echo '    In file: ' . $this->current_file . PHP_EOL;
         if ($line !== null) {
-            echo '  At line: ' . $line . PHP_EOL;
+            echo '    At line: ' . $line . PHP_EOL;
         }
     }
 

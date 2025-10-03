@@ -30,7 +30,7 @@
         "test:integration": "@php vendor/bin/phpunit --testsuite=integration",
         "test:docs": "@php vendor/bin/phpunit --testsuite=docs",
         "test:coverage": "@php vendor/bin/phpunit --coverage-text",
-        "compose-docs-tests": "@php tests/ComposeDocTests.php"
+        "compose-docs-tests": "@php tests/ComposeDocTests-2.php"
     },
     "config": {
         "sort-packages": true
