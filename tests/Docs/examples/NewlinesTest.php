@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace \Tests\Docs\\examples\;
+namespace Orryv\XString\Tests\Docs\Examples;
 
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
@@ -10,16 +10,15 @@ use Orryv\XString\Newline;
 
 final class NewlinesTest extends TestCase
 {
-    public function test0(): void
+    public function testNewlines(): void
     {
         $str = <<<EOT
          Line1 - blabla
         Hello, World!
         EOT;
-        $string = new XString($str);
+        $string = XString::new($str);
         self::assertEquals($str, (string)$string);
-        $string->after(Newline::new()->startsWith('Line1', trim:true));
-        echo $string; // Outputs: "Hello, World!"
+        $string = $string->after(Newline::new()->startsWith('Line1', trim:true));
         self::assertEquals("Hello, World!", (string)$string);
     }
 

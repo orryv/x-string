@@ -2,20 +2,19 @@
 
 declare(strict_types=1);
 
-namespace \Tests\Docs\\examples\;
+namespace Orryv\XString\Tests\Docs\Examples;
 
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 
 final class BasicTest extends TestCase
 {
-    public function test0(): void
+    public function testBasic(): void
     {
-        $str = new XString(" Hello, World! \n");
+        $str = XString::new(" Hello, World! \n");
         self::assertTrue($str instanceof XString);
         self::assertEquals(" Hello, World! \n", (string)$str);
         $trimmed = $str->trim();
-        echo $trimmed; // Outputs: "Hello, World!"
         self::assertEquals("Hello, World!", (string)$trimmed);
     }
 

@@ -10,11 +10,10 @@ $str = <<<EOT
 Hello, World!
 EOT;
 
-$string = new XString($str);
+$string = XString::new($str);
 #Test: self::assertEquals($str, (string)$string);
 
 // Remove first line (one way to do it)
-$string->after(Newline::new()->startsWith('Line1', trim:true));
-echo $string; // Outputs: "Hello, World!"
+$string = $string->after(Newline::new()->startsWith('Line1', trim:true));
 #Test: self::assertEquals("Hello, World!", (string)$string);
 ```

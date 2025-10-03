@@ -24,13 +24,14 @@
     },
     "scripts": {
         "test": [
+            "@php tests/ComposeDocTests.php",
             "@php vendor/bin/phpunit"
         ],
         "test:unit": "@php vendor/bin/phpunit --testsuite=unit",
         "test:integration": "@php vendor/bin/phpunit --testsuite=integration",
         "test:docs": "@php vendor/bin/phpunit --testsuite=docs",
         "test:coverage": "@php vendor/bin/phpunit --coverage-text",
-        "compose-docs-tests": "@php tests/ComposeDocTests-2.php"
+        "compose-docs-tests": "@php tests/ComposeDocTests.php"
     },
     "config": {
         "sort-packages": true
