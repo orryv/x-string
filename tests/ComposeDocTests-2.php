@@ -1,6 +1,6 @@
 <?php
 
-ComposeDocTests::run(__DIR__ . '/../');
+ComposeDocTests::run(__DIR__ . '/../', null, 'Orryv\\XString');
 
 
 class ComposeDocTests
@@ -16,7 +16,7 @@ class ComposeDocTests
     private int $method_list_missing_count = 0;
     private int $all_urls_missing_count = 0;
 
-    public static function run($root_folder, $exclude = null, ?string $base_namespace = null): void
+    public static function run($root_folder, ?array $exclude = null, ?string $base_namespace = null): void
     {
         $instance = new self();
 
@@ -25,7 +25,7 @@ class ComposeDocTests
         }
 
         if ($base_namespace !== null) {
-            $instance->base_namespace = $base_namespace;
+            $instance->base_namespace = rtrim($base_namespace, '\\');
         }
 
         $instance->normalizeExcludes();
