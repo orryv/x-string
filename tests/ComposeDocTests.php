@@ -437,7 +437,6 @@ class ComposeDocTests
                     }
 
                     $doc_path = $this->root_folder . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $url_matches[2]);
-                    echo '  Processed file: ' . $doc_path . PHP_EOL;
                     $this->processed_files[] = $doc_path;
 
                     if(count($url_matches) < 3) {

@@ -15,7 +15,8 @@ so in rare cases where you need to fix a test, you should fix the code snippet i
 ## fixing tests (heave)
 
 ```
-run `compose-docs-tests` (this runs the script that generates tests from the docs), but for now look at the output of that script.
+Always run "composer install" first.
+Then run `composer compose-docs-tests` (this runs the script that generates tests from the docs), but for now look at the output of that script.
 
 Then apply the following for the first 6 methods where 0 tests are found (or the doc file is not found) which is shown in the output of `compose-docs-tests`, so apply this for each method:
 
@@ -54,7 +55,7 @@ Current file:
 *The test file goes here*
 ---
 
-When done run "composer test" and you'll see some issues.
+When done run "composer test" (which runs both "compose-docs-tests" and "php vendor/bin/phpunit") and if PHPUnit reported issues, fix them.
 
 Fix these issues by fixing the code (the tests should be fine).
 Never update test files themselves in the tests/docs/ folder,
