@@ -15,7 +15,6 @@ final class BasicTest extends TestCase
         self::assertTrue($str instanceof XString);
         self::assertEquals(" Hello, World! \n", (string)$str);
         $trimmed = $str->trim();
-        echo $trimmed; // Outputs: "Hello, World!"
         self::assertEquals("Hello, World!", (string)$trimmed);
     }
 

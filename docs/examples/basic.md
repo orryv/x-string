@@ -11,6 +11,5 @@ $str = XString::new(" Hello, World! \n");
 
 // Trim whitespace
 $trimmed = $str->trim();
-echo $trimmed; // Outputs: "Hello, World!"
 #Test: self::assertEquals("Hello, World!", (string)$trimmed);
 ```

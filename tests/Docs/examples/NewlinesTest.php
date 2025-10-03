@@ -19,7 +19,6 @@ final class NewlinesTest extends TestCase
         $string = XString::new($str);
         self::assertEquals($str, (string)$string);
         $string = $string->after(Newline::new()->startsWith('Line1', trim:true));
-        echo $string; // Outputs: "Hello, World!"
         self::assertEquals("Hello, World!", (string)$string);
     }
 

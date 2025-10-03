@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 use Orryv\XString\Newline;
 
-final class ReadmeV2Test extends TestCase
+final class ReadmeTest extends TestCase
 {
     public function testBasic(): void
     {
@@ -16,20 +16,15 @@ final class ReadmeV2Test extends TestCase
         self::assertTrue($str instanceof XString);
         self::assertEquals(" Hello, World! \n", (string)$str);
         $trimmed = $str->trim();
-        echo $trimmed; // Outputs: "Hello, World!"
         self::assertEquals("Hello, World!", (string)$trimmed);
     }
 
     public function testNewlines(): void
     {
-        $str = <<<EOT
-         Line1 - blabla
-        Hello, World!
-        EOT;
+        $str = ' Line1 - blabla' . PHP_EOL . 'Hello, World!';
         $string = XString::new($str);
         self::assertEquals($str, (string)$string);
         $string = $string->after(Newline::new()->startsWith('Line1', trim:true));
-        echo $string; // Outputs: "Hello, World!"
         self::assertEquals("Hello, World!", (string)$string);
     }
 

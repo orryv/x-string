@@ -15,6 +15,5 @@ $string = XString::new($str);
 
 // Remove first line (one way to do it)
 $string = $string->after(Newline::new()->startsWith('Line1', trim:true));
-echo $string; // Outputs: "Hello, World!"
 #Test: self::assertEquals("Hello, World!", (string)$string);
 ```
