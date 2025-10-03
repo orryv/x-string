@@ -1,5 +1,9 @@
 <?php
 
+// TODO: Search src/ (and possibly other folders) for methods without docblocks, docblocks of public methods must also have an @see (dedicated documentation) tag
+// TODO: Search in the code for public methods that are not in a method-list in any doc file
+
+
 ComposeDocTests::run(__DIR__ . '/../', null, 'Orryv\\XString');
 
 
