@@ -155,24 +155,28 @@ class ComposeDocTests
     private function processTestBlocks(string $content, string $rel_path): void
     {
         $blocks = [];
-        preg_match_all('/^<!--\h*test:\h*([A-Za-z0-9-]+)\h*-->\h*\R[ \t]*```(?:[a-z]+)?\b/mi', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
-        preg_match_all('/^<!--\s*test:[^\r\n]*?-->/mi', $content, $matches2, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        preg_match_all('/^<!--\h*test:\h*([A-Za-z0-9-]+)\h*-->\h*\R[ \t]*```(?:[a-z]+)?\h*$/mi', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        preg_match_all('/^<!--\s*test:[^\r\n]*?-->/mi', $content, $raw_markers, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
 
-        if(count($matches2) != count($matches)) {
-            $this->error('Found "<!-- test:... -->" but something is wrong with the formatting. Either the name has invalid characters (<!-- test:[A-Za-z0-9-] -->) or the code block is missing on the line after.', $matches2[0][0][1]);
+        if(count($raw_markers) !== count($matches)) {
+            $offset = $raw_markers[0][0][1] ?? 0;
+            $line = 1 + preg_match_all('/\R/', substr($content, 0, $offset));
+            $this->error('Found "<!-- test:... -->" but something is wrong with the formatting. Either the name has invalid characters (<!-- test:[A-Za-z0-9-] -->) or the code block is missing on the line after.', $line);
             return;
         }
 
-        if(count($matches) > 0) {            
-            // Extract the code block:
-            $start = $matches[0][0][1] + strlen($matches[0][0][0]); // right after the opening fence
-            if (!preg_match('/^\h*```\h*$/m', $content, $mclose, PREG_OFFSET_CAPTURE, $start)) {
-                $this->error('Opening ``` without a closing ```.');
-                return;
-            }
-            $end = $mclose[0][1];
+        foreach ($matches as $match) {
+            $test_name = $match[1][0];
+            $start = $match[0][1] + strlen($match[0][0]);
 
-            $blocks[] = trim(substr($content, $start, $end - $start));
+            if (!preg_match('/^\h*```\h*$/m', $content, $mclose, PREG_OFFSET_CAPTURE, $start)) {
+                $line = 1 + preg_match_all('/\R/', substr($content, 0, $match[0][1]));
+                $this->error('Opening ``` without a closing ```.', $line);
+                continue;
+            }
+
+            $end = $mclose[0][1];
+            $blocks[$test_name] = trim(substr($content, $start, $end - $start));
         }
 
         echo '  Found ' . count($blocks) . ' test blocks', PHP_EOL;
@@ -238,18 +242,27 @@ class ComposeDocTests
         return $data;
     }
 
-    private function composeTestFile(array $data, string $doc_path): void 
+    private function composeTestFile(array $data, string $doc_path): void
     {
         global $base_namespace;
 
         $name = substr(basename($doc_path), 0, -3);
 
-        $path = substr($doc_path, 5, strlen($doc_path) - (strlen(basename($doc_path)) + 5));
+        $directory = str_replace(['\\', '/'], '/', dirname($doc_path));
+        $relative_path = '';
+        if ($directory !== '/' && $directory !== '.') {
+            $relative = trim($directory, '/');
+            if (str_starts_with($relative, 'docs/')) {
+                $relative = substr($relative, strlen('docs/'));
+            }
+            $relative_path = $relative;
+        }
+
         // first character to upper
         $name = ucfirst($name);
 
         $namespace_segments = [];
-        $trimmed_path = trim($path, '/');
+        $trimmed_path = trim($relative_path, '/');
         if ($trimmed_path !== '') {
             foreach (explode('/', $trimmed_path) as $segment) {
                 if ($segment === '') {
@@ -265,7 +278,8 @@ class ComposeDocTests
             $namespace .= '\\' . implode('\\', $namespace_segments);
         }
 
-        $new_path = $this->root_folder . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'Docs' . $path . $name . 'Test.php';
+        $relative_dir = $relative_path === '' ? '' : DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+        $new_path = $this->root_folder . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'Docs' . $relative_dir . DIRECTORY_SEPARATOR . $name . 'Test.php';
         echo '  New path: ' . $new_path . PHP_EOL;
         $dir = dirname($new_path);
         // echo '  New path: ' . $new_path . PHP_EOL;
