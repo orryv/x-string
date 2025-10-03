@@ -4,14 +4,83 @@
 // TODO: Search in the code for public methods that are not in a method-list in any doc file
 // TODO: accept a error and warning limit, and return non-zero exit code if exceeded
 // TODO: put into own project and make installable via composer, and make config with args possible (root folder, base namespace, exclude paths, etc)
+// TODO: check if signature in method lists matches actual method signature (parameters, types, default values, return type, etc)
+// TODO: Refactor code so it outputs all errors and warnings per file, and give detailed metrics at the end.
+
+// parse $args
+print_r($argv);
+
+$arguments = [
+    'enabled' => [],
+    'disabled' => [],
+    'namespace' => null,
+    'root_folder' => null,
+    'exclude' => null,
+];
+foreach($argv as $arg) {
+    if($arg === '-block-generation') {
+        $arguments['enabled'][] = 'block-generation';
+    } elseif($arg === '-disable-block-generation') {
+        $arguments['disabled'][] = 'block-generation';
+    }
+
+    if($arg === '-method-list') {
+        $arguments['enabled'][] = 'method-list';
+    } elseif($arg === '-disable-method-list') {
+        $arguments['disabled'][] = 'method-list';
+    }
+
+    if($arg === '-doc-urls') {
+        $arguments['enabled'][] = 'doc-urls';
+    } elseif($arg === '-disable-doc-urls') {
+        $arguments['disabled'][] = 'doc-urls';
+    }
+
+    if(str_starts_with($arg, '-base-namespace=')) {
+        $arguments['namespace'] = substr($arg, strlen('-namespace='));
+    }
+
+    if(str_starts_with($arg, '-root-folder=')) {
+        $arguments['root_folder'] = substr($arg, strlen('-root-folder='));
+    }
+
+    if(str_starts_with($arg, '-exclude-folders=')) {
+        //json decode
+        $json = substr($arg, strlen('-exclude-folders='));
+        $arguments['exclude'] = json_decode($json, true);
+    }
+}
+
+if(!empty($arguments['enabled']) && !empty($arguments['disabled'])) {
+    echo 'Error: Cannot have both enabled and disabled options at the same time.', PHP_EOL;
+    exit(1);
+}
+
+print_r($arguments);
+exit;
+
+$config = [
+    'root_folder' => __DIR__ . '/../',
+    'base_namespace' => 'Orryv\\XString',
+    'exclude' => ['/vendor/', '/.git/', '/tests/'],
+    'run_test_block_generation' => true,
+    'run_method_list_check' => true,
+    'run_all_urls_check' => true,
+];
 
 
-ComposeDocTests::run(__DIR__ . '/../', null, 'Orryv\\XString');
+
+
+
+
+ComposeDocTests::new(__DIR__ . '/../', 'Orryv\\XString')
+    // ->setExcludeFolders(['/vendor/', '/.git/', '/tests/'])
+    ->run(__DIR__ . '/../');
 
 
 class ComposeDocTests
 {
-    private ?self $instance = null;
+    private static ?self $instance = null;
     private ?string $root_folder = null;
     private array $exclude = ['/vendor/', '/.git/', '/tests/'];
     private ?string $current_file = null;
@@ -24,37 +93,71 @@ class ComposeDocTests
     private int $test_blocks_found_count = 0;
     private int $test_blocks_docs_missing_count = 0;
 
-    public static function run($root_folder, ?array $exclude = null, ?string $base_namespace = null): void
-    {
-        $instance = new self();
+    private bool $run_test_block_generation = true;
+    private bool $run_method_list_check = true;
+    private bool $run_all_urls_check = true;
 
-        if($exclude !== null) {
-            $instance->exclude = array_merge($exclude, ['/vendor/', '/.git/']);
-        }
+    public static function new(string $root_folder, ?string $base_namespace = null): self
+    {
+        self::$instance = new self();
+        self::$instance->root_folder = rtrim($root_folder, '/');
 
         if ($base_namespace !== null) {
-            $instance->base_namespace = rtrim($base_namespace, '\\');
+            self::$instance->base_namespace = rtrim($base_namespace, '\\');
         }
 
-        $instance->normalizeExcludes();
-        $instance->handleRawRootFolder($root_folder);
-        $instance->removeDocsDir();
+        self::$instance->handleRawRootFolder($root_folder);
+
+        return self::$instance;
+    }
+
+    public function setExcludeFolders(array $exclude): self
+    {
+        $this->exclude = array_merge($exclude, ['/vendor/', '/.git/']);
+        $this->normalizeExcludes();
+        return $this;
+    }
+
+    public function disableTestBlockGeneration(): self
+    {
+        $this->run_test_block_generation = false;
+        return $this;
+    }
+
+    public function disableMethodListCheck(): self
+    {
+        $this->run_method_list_check = false;
+        return $this;
+    }
+
+    public function disableAllUrlsCheck(): self
+    {
+        $this->run_all_urls_check = false;
+        return $this;
+    }
+
+
+    public function run(): void
+    {
+        if($this->run_test_block_generation){
+            $this->removeDocsDir();
+        }
 
         // echo 'Root folder: ' . $root_folder . PHP_EOL;
         // exit;
 
         $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($instance->root_folder, FilesystemIterator::SKIP_DOTS)
+            new RecursiveDirectoryIterator($this->root_folder, FilesystemIterator::SKIP_DOTS)
         );
 
-        $instance->walkItems($iterator);
-        $instance->secondWalkItems($iterator);
+        $this->walkItems($iterator);
+        $this->secondWalkItems($iterator);
 
         echo 'Finished processing.' . PHP_EOL;
-        echo '  Method-list missing docs count: ' . $instance->method_list_missing_count . PHP_EOL;
-        echo '  All URLs missing docs count: ' . $instance->all_urls_missing_count . PHP_EOL;
-        echo '  File count in /docs/ with no test blocks: ' . $instance->test_blocks_docs_missing_count . PHP_EOL;
-        echo '  Total test blocks found: ' . $instance->test_blocks_found_count . PHP_EOL;
+        echo '  Method-list missing docs count: ' . $this->method_list_missing_count . PHP_EOL;
+        echo '  All URLs missing docs count: ' . $this->all_urls_missing_count . PHP_EOL;
+        echo '  File count in /docs/ with no test blocks: ' . $this->test_blocks_docs_missing_count . PHP_EOL;
+        echo '  Total test blocks found: ' . $this->test_blocks_found_count . PHP_EOL;
     }
 
     public function removeDocsDir(): void 
@@ -78,6 +181,10 @@ class ComposeDocTests
 
     public function walkItems($iterator, $current = null): void
     {
+        if(!$this->run_test_block_generation && !$this->run_method_list_check) {
+            return;
+        }
+
         foreach ($iterator as $fileinfo) {
             $rel_path = str_replace($this->root_folder, '', $fileinfo->getPathname());
 
@@ -102,15 +209,22 @@ class ComposeDocTests
                     echo '  ERROR: Could not read file, skipping', PHP_EOL;
                     continue;
                 }
-                $this->processTestBlocks($content, $rel_path);
-                // exit;
-                $this->processMethodList($content);
+                if($this->run_test_block_generation){
+                    $this->processTestBlocks($content, $rel_path);
+                }
+                if($this->run_method_list_check){
+                    $this->processMethodList($content);
+                }
             }
         }
     }
 
     public function secondWalkItems($iterator, $current = null): void
     {
+        if(!$this->run_all_urls_check) {
+            return;
+        }
+
         foreach ($iterator as $fileinfo) {
             $rel_path = str_replace($this->root_folder, '', $fileinfo->getPathname());
 
@@ -135,7 +249,9 @@ class ComposeDocTests
                     echo '  ERROR: Could not read file, skipping', PHP_EOL;
                     continue;
                 }
-                $this->checkIfAllDocUrlsExistAndAreValid($content, $fileinfo->getPath());
+                if($this->run_all_urls_check){
+                    $this->checkIfAllDocUrlsExistAndAreValid($content, $fileinfo->getPath());
+                }
             }
         }
     }
