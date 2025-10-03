@@ -7,13 +7,8 @@
 - **OS:** Linux/macOS/Windows. Docker optional.
 
 ## TODO's
-- [ ] Think about issues, improvements and advice and put it in the section below (`Issues, improvements and advice`): about this readme and about the code that we will create using what's written in `# Concept`. Some questions to ask (but by far not a complete list): 
-  - Can I create the source code the way it should work described here? 
-  - Can I propose to change something that will make the code easier to test?
-  - Can I propose changes that will make it easier to understand for the user, while still carrying the same functionality?
-  - Does what's described/coded have inconsistencies or contradictions?
-- [ ] Create a detailed readme (other file than this) which an AI will use to create the project and/or be guided. The readme must reflect everything what's put in the `# Concept` below. 
-- [ ] Create a roadmap and put it in `# Roadmap` to split up the steps that need to be done that lead up to the finished code/product. Max 12 steps. Keep in mind that testing must be extensively, so already consider splitting up code etc. when giving specifics in the roadmap. The roadmap will be applied after all TODO's in this list are done, keep that in mind. There might already be steps in the roadmap, you can add steps before, after and/or in-between them. You can change the steps already provided in the Roadmap if needed, but don't remove anything that might be useful later (ex. all test categories: unit, integration, ...)
+- [ ] trim(), ltrim(), rtrim(): must also have a parameter to trim other characters than space, tab, newline. (ex. comma, dot, ...)
+- [ ] think about a method that does the reverse as trim: it makes sure a character (or multiple characters) is at the start and/or end of the string. (ex. make sure a string starts with / and ends with /)
 
 # Roadmap
 - [ ] Setup the project
