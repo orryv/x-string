@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Orryv\XString\Tests\Docs\XString\Methods;
+namespace Orryv\XArray\Tests\Docs\XString\Methods;
 
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
