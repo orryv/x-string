@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Orryv\XString\Tests\Docs\HtmlTag\Methods;
+namespace Orryv\XArray\Tests\Docs\HtmlTag\Methods;
 
 use PHPUnit\Framework\TestCase;
 use Orryv\XString\HtmlTag;
