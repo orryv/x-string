@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
 use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
 
 final class BetweenAllTest extends TestCase
 {
@@ -29,14 +31,44 @@ final class BetweenAllTest extends TestCase
     public function testBetweenAllAlternatives(): void
     {
         $text = XString::new('[one]{two}(three)');
-        $segments = $text->betweenAll(['[', '{', '('], [']', '}', ')']);
+        $segments = $text->betweenAll(['[', '{', '('], [']', '}', ')'], start_behavior: 'or', end_behavior: 'or');
         self::assertSame(['one', 'two', 'three'], $segments);
+    }
+
+    public function testBetweenAllMixedOr(): void
+    {
+        $text = XString::new("<value>100</value>{200}\n<result>300</result>\n");
+        $segments = $text->betweenAll(
+            [
+                HtmlTag::new('value'),
+                '{',
+                [Newline::new("\n"), HtmlTag::new('result')],
+            ],
+            [
+                HtmlTag::closeTag('value'),
+                '}',
+                [HtmlTag::closeTag('result'), Newline::new("\n")],
+            ],
+            start_behavior: 'or',
+            end_behavior: 'or'
+        );
+        self::assertSame(['100', '200', '300'], $segments);
     }
 
     public function testBetweenAllSequence(): void
     {
         $html = XString::new('<article><section><p>Alpha</p></section></article><article><section><p>Beta</p></section></article>');
-        $segments = $html->betweenAll([['<article>', '<section>', '<p>']], [['</p>', '</section>', '</article>']]);
+        $segments = $html->betweenAll(['<article>', '<section>', '<p>'], ['</p>', '</section>', '</article>']);
+        self::assertSame(['Alpha', 'Beta'], $segments);
+    }
+
+    public function testBetweenAllMixedSequential(): void
+    {
+        $text = XString::new("BEGIN\n::Alpha::\nEND\nBEGIN\n::Beta::\nEND");
+        $segments = $text->betweenAll(
+            ['BEGIN', Newline::new("\n"), '::'],
+            ['::', Newline::new("\n"), Regex::new('END')]
+        );
         self::assertSame(['Alpha', 'Beta'], $segments);
     }
 

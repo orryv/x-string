@@ -7,6 +7,9 @@ namespace Orryv\XArray\Tests\Docs\XString\Methods;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
 
 final class BeforeTest extends TestCase
 {
@@ -45,6 +48,26 @@ final class BeforeTest extends TestCase
         $before = $value->before('-');
         self::assertSame('abc-def', (string) $value);
         self::assertSame('abc', (string) $before);
+    }
+
+    public function testBeforeMixedSequential(): void
+    {
+        $document = XString::new("Intro\n<header>\nTitle: Report</header>");
+        $result = $document->before([HtmlTag::new('header'), Newline::new("\n"), 'Title: ']);
+        self::assertSame("Intro\n", (string) $result);
+    }
+
+    public function testBeforeOrBehavior(): void
+    {
+        $value = XString::new("Prefix {data} <id>42</id>\nResult: done");
+        $sequential = $value->before([Newline::new("\n"), 'Result: ']);
+        $either = $value->before([
+            HtmlTag::new('id'),
+            Regex::new('{'),
+            [Newline::new("\n"), 'Result: '],
+        ], start_behavior: 'or');
+        self::assertStringContainsString('<id>42</id', (string) $sequential);
+        self::assertSame('Prefix ', (string) $either);
     }
 
     public function testBeforeInvalidSkip(): void

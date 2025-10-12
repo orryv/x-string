@@ -15,6 +15,8 @@
     - [Search from the end of the string](#search-from-the-end-of-the-string)
     - [Graceful fallback when the delimiter is missing](#graceful-fallback-when-the-delimiter-is-missing)
     - [Immutability check](#immutability-check)
+    - [Use mixed delimiter types sequentially](#use-mixed-delimiter-types-sequentially)
+    - [Choose between sequential and OR behavior](#choose-between-sequential-and-or-behavior)
     - [Reject negative skip values](#reject-negative-skip-values)
   - [One-line API table entry](#one-line-api-table-entry)
 
@@ -23,7 +25,7 @@
 **Signature:**
 
 ```php
-public function before(Newline|HtmlTag|Regex|string|array $search, $last_occurence = false, int $skip = 0): self
+public function before(Newline|HtmlTag|Regex|string|array $search, $last_occurence = false, int $skip = 0, string $start_behavior = 'sequential'): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -33,14 +35,14 @@ public function before(Newline|HtmlTag|Regex|string|array $search, $last_occuren
 ## Description
 
 Returns a new `XString` containing the substring that appears before the specified delimiter. You can skip a number of matches
-or run the lookup from the end of the string. Arrays may be supplied to offer alternative delimiters, and nested arrays enforce
-multi-step sequences when needed.
+or run the lookup from the end of the string. Arrays may be supplied and interpreted as sequential fragments (default) or as
+independent alternatives via the `$start_behavior` flag.
 
 ## Important notes and considerations
 
 - **Directional searches.** Passing `$last_occurence = true` searches from the end of the string. In that case `$skip` counts from the
   end as well.
-- **Array delimiters.** Provide arrays of scalars to treat them as OR delimiters. Wrap fragments inside their own arrays (e.g. `[['<h2>', '<strong>']]`) to demand sequential matching.
+- **Array delimiters.** Provide arrays of scalars and choose the behavior: `'sequential'` requires fragments to appear in order (e.g. `['<h2>', '<strong>']`), while `'or'` treats each entry as an acceptable delimiter.
 - **Graceful fallback.** If the delimiter cannot be found, the original value is returned unchanged.
 - **Immutable.** The original instance is never modified.
 
@@ -48,9 +50,10 @@ multi-step sequences when needed.
 
 | Name | Type | Default | Description |
 | --- | --- | --- | --- |
-| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. Arrays act as OR delimiters; nest arrays to match sequences. |
+| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. |
 | `$last_occurence` | `bool` | `false` | Search from the end of the string. |
 | `$skip` | `int` | `0` | Number of delimiter occurrences to skip before returning a result. |
+| `$start_behavior` | `'sequential'\|'or'` | `'sequential'` | How arrays passed to `$search` should be matched. Sequential mode enforces ordering; OR mode accepts any fragment. |
 
 ## Returns
 
@@ -123,6 +126,40 @@ $before = $value->before('-');
 #Test: self::assertSame('abc', (string) $before);
 ```
 
+### Use mixed delimiter types sequentially
+
+<!-- test:before-mixed-sequential -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+
+$document = XString::new("Intro\n<header>\nTitle: Report</header>");
+$result = $document->before([HtmlTag::new('header'), Newline::new("\n"), 'Title: ']);
+
+#Test: self::assertSame("Intro\n", (string) $result);
+```
+
+### Choose between sequential and OR behavior
+
+<!-- test:before-or-behavior -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
+
+$value = XString::new("Prefix {data} <id>42</id>\nResult: done");
+$sequential = $value->before([Newline::new("\n"), 'Result: ']);
+$either = $value->before([
+    HtmlTag::new('id'),
+    Regex::new('{'),
+    [Newline::new("\n"), 'Result: '],
+], start_behavior: 'or');
+#Test: self::assertStringContainsString('<id>42</id', (string) $sequential);
+#Test: self::assertSame('Prefix ', (string) $either);
+```
+
 ### Reject negative skip values
 
 <!-- test:before-invalid-skip -->
@@ -139,4 +176,4 @@ $value->before('e', skip: -1);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::before` | `public function before(Newline\|HtmlTag\|Regex\|string\|array $search, $last_occurence = false, int $skip = 0): self` — Return the substring before a chosen delimiter with optional reverse traversal and skip support. |
+| `XString::before` | `public function before(Newline\|HtmlTag\|Regex\|string\|array $search, $last_occurence = false, int $skip = 0, string $start_behavior = 'sequential'): self` — Return the substring before a chosen delimiter with optional reverse traversal, skip support, and configurable delimiter behavior. |
