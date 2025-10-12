@@ -202,6 +202,11 @@ final class XString implements Stringable
         return strlen($this->value);
     }
 
+    public function graphemeLength(): int
+    {
+        return $this->graphemeLengthOrFallback();
+    }
+
     public function withMode(string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING): self
     {
         return new self($this->value, $mode, $encoding);
@@ -220,6 +225,23 @@ final class XString implements Stringable
     public function asGraphemes(string $encoding = self::DEFAULT_ENCODING): self
     {
         return $this->withMode('graphemes', $encoding);
+    }
+
+    public function charAt(int $index): string
+    {
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+        if ($units === []) {
+            throw new InvalidArgumentException('Index is out of range.');
+        }
+
+        $count = count($units);
+        $position = $index >= 0 ? $index : $count + $index;
+
+        if ($position < 0 || $position >= $count) {
+            throw new InvalidArgumentException('Index is out of range.');
+        }
+
+        return $units[$position];
     }
 
     /**
@@ -985,6 +1007,11 @@ final class XString implements Stringable
         return $segments;
     }
 
+    public function lineCount(): int
+    {
+        return count($this->lines());
+    }
+
     /**
      * @return list<string>
      */
@@ -1031,6 +1058,79 @@ final class XString implements Stringable
 
         /** @var list<string> $segments */
         return array_values($segments);
+    }
+
+    public function wordCount(): int
+    {
+        return count($this->words());
+    }
+
+    public function sentenceCount(): int
+    {
+        $normalized = trim($this->value);
+        if ($normalized === '') {
+            return 0;
+        }
+
+        $boundaries = [];
+        $matchCount = self::withRegexErrorHandling(
+            static function () use ($normalized, &$boundaries) {
+                return preg_match_all(
+                    '/[.!?…]+(?:["\'\)\]\}»”’]+)?(?=\s+|\R|$)/u',
+                    $normalized,
+                    $boundaries,
+                    PREG_OFFSET_CAPTURE
+                );
+            }
+        );
+
+        $entries = [];
+        if (is_int($matchCount) && $matchCount > 0 && isset($boundaries[0]) && is_array($boundaries[0])) {
+            /** @var list<array{0: string, 1: int}> $entries */
+            $entries = $boundaries[0];
+        }
+
+        $sentenceCount = 0;
+        $start = 0;
+        $length = strlen($normalized);
+
+        foreach ($entries as $entry) {
+            [$punctuation, $offset] = $entry;
+            if (!is_string($punctuation) || !is_int($offset)) {
+                continue;
+            }
+
+            $end = $offset + strlen($punctuation);
+            $fragment = substr($normalized, $start, $end - $start);
+            if ($fragment === false || trim($fragment) === '') {
+                continue;
+            }
+
+            if (self::fragmentEndsWithAbbreviation($fragment)) {
+                continue;
+            }
+
+            $sentenceCount++;
+            $start = $end;
+        }
+
+        if ($entries !== [] && $start < $length) {
+            $tail = trim(substr($normalized, $start));
+            if ($tail !== '') {
+                $sentenceCount++;
+            }
+        }
+
+        if ($sentenceCount === 0) {
+            $lines = preg_split('/\R+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY);
+            if (is_array($lines) && $lines !== []) {
+                return count($lines);
+            }
+
+            return 1;
+        }
+
+        return $sentenceCount;
     }
 
     /**
@@ -1291,6 +1391,29 @@ final class XString implements Stringable
         bool $reversed = false
     ): self {
         return $this->replace($search, '', $limit, $reversed);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function contains(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    {
+        $candidates = is_array($search) ? $search : [$search];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Search candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested search arrays are not supported.');
+            }
+
+            if ($this->containsCandidate($candidate)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function similarityScore(
@@ -1715,6 +1838,80 @@ final class XString implements Stringable
         }
 
         return new self($converted, $this->mode, $this->encoding);
+    }
+
+    private static function fragmentEndsWithAbbreviation(string $fragment): bool
+    {
+        $trimmed = trim($fragment);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        $trimmed = preg_replace('/["\'\)\]\}»”’]+$/u', '', $trimmed) ?? $trimmed;
+        $parts = preg_split('/\s+/u', $trimmed, -1, PREG_SPLIT_NO_EMPTY);
+        if ($parts === false || $parts === []) {
+            $lastWord = $trimmed;
+        } else {
+            $last = end($parts);
+            $lastWord = is_string($last) ? $last : $trimmed;
+        }
+
+        $normalized = strtolower($lastWord);
+        $abbreviations = [
+            'mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'sr.', 'jr.', 'vs.', 'etc.', 'e.g.', 'i.e.', 'no.', 'fig.', 'st.', 'rd.',
+            'th.', 'jan.', 'feb.', 'mar.', 'apr.', 'jun.', 'jul.', 'aug.', 'sep.', 'sept.', 'oct.', 'nov.', 'dec.',
+        ];
+
+        if (in_array($normalized, $abbreviations, true)) {
+            return true;
+        }
+
+        return preg_match('/^\p{Lu}\.$/u', $lastWord) === 1;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string $candidate
+     */
+    private function containsCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate): bool
+    {
+        if ($candidate instanceof HtmlTag) {
+            return self::findNextHtmlTagMatch($this->value, $candidate, 0) !== null;
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject) {
+                    return preg_match($pattern, $subject);
+                }
+            );
+
+            return is_int($result) && $result > 0;
+        }
+
+        if ($candidate instanceof Newline) {
+            $fragment = (string) $candidate;
+            $canonical = self::canonicalizeLineBreak($fragment);
+
+            if ($fragment === '' && $canonical === '') {
+                throw new InvalidArgumentException('Search value cannot be empty.');
+            }
+
+            if ($fragment !== '' && str_contains($this->value, $fragment)) {
+                return true;
+            }
+
+            return $canonical !== '' && str_contains($this->value, $canonical);
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        return str_contains($this->value, $fragment);
     }
 
     private static function normalizeFragment(mixed $value): string
