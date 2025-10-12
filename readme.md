@@ -142,7 +142,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`toCamel`](docs/x-string/methods/toCamel.md) | 1.0 | `public function toCamel(bool $capitalize_first = false): self`<br>Convert the string to camelCase. If $capitalize_first is true, it converts to PascalCase (first letter capitalized). |
 | [`toTitle`](docs/x-string/methods/toTitle.md) | 1.0 | `public function toTitle(): self`<br>Convert the string to Title Case (first letter of each word capitalized). |
 | [`toPascal`](docs/x-string/methods/toPascal.md) | 1.0 | `public function toPascal(): self`<br>Convert the string to PascalCase (first letter capitalized, no spaces). |
-| [`match`](docs/x-string/methods/match.md) | 1.0 | `public function match(Regex\|array<Regex> $pattern): null \| array`<br>Match the string against a regex pattern. Returns an array of matches or null if no match is found. |
+| [`match`](docs/x-string/methods/match.md) | 1.0 | `public function match(Regex\|array<Regex> $pattern): null \| array`<br>Match the string against one or more regex patterns. Returns an array containing every match (with captures) or null if none are found. |
 
 ### Strip / Remove
 
