@@ -843,72 +843,130 @@ final class XString implements Stringable
             return new self('', $this->mode, $this->encoding);
         }
 
-        $delimiters = is_array($input_delimiter) ? $input_delimiter : [$input_delimiter];
-        if ($delimiters === []) {
-            throw new InvalidArgumentException('Input delimiter cannot be empty.');
-        }
-
-        $normalized_delimiters = [];
-        foreach ($delimiters as $delimiter) {
-            $fragment = self::normalizeFragment($delimiter);
-            if ($fragment === '') {
-                throw new InvalidArgumentException('Input delimiters cannot be empty.');
-            }
-
-            $normalized_delimiters[$fragment] = true;
-        }
-
-        $normalized_delimiters = array_keys($normalized_delimiters);
-
-        $working = $this->value;
-        $patterns = [
-            '/(?<=\p{Ll})(?=\p{Lu})/u',
-            '/(?<=\p{L})(?=\p{Nd})/u',
-            '/(?<=\p{Nd})(?=\p{L})/u',
-            '/(?<=\p{Lu})(?=\p{Lu}\p{Ll})/u',
-        ];
-
-        foreach ($patterns as $pattern) {
-            $next = preg_replace($pattern, ' ', $working);
-            if ($next !== null) {
-                $working = $next;
-            }
-        }
-
-        if ($normalized_delimiters !== []) {
-            $escaped_parts = array_map(
-                static fn (string $value): string => preg_quote($value, '/'),
-                $normalized_delimiters
-            );
-            $delimiter_pattern = '/(?:' . implode('|', $escaped_parts) . ')+/u';
-            $next = preg_replace($delimiter_pattern, ' ', $working);
-            if ($next !== null) {
-                $working = $next;
-            }
-        }
-
-        $segments = preg_split('/[\s_]+/u', $working);
-        if ($segments === false) {
-            $segments = preg_split('/_+/', $working);
-        }
-
-        $words = [];
-        foreach ($segments as $segment) {
-            if ($segment === '' || $segment === null) {
-                continue;
-            }
-
-            $segment = trim($segment);
-            if ($segment === '') {
-                continue;
-            }
-
-            $words[] = function_exists('mb_strtolower')
-                ? mb_strtolower($segment, $this->encoding)
-                : strtolower($segment);
-        }
+        $words = $this->extractCaseWords($input_delimiter);
 
         return new self(implode('_', $words), $this->mode, $this->encoding);
+    }
+
+    public function toKebab(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $snake = $this->toSnake([' ', '-', '_']);
+
+        return new self(str_replace('_', '-', (string) $snake), $this->mode, $this->encoding);
+    }
+
+    public function toCamel(bool $capitalize_first = false): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $snake = (string) $this->toSnake([' ', '-', '_']);
+        if ($snake === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $parts = array_values(array_filter(
+            explode('_', $snake),
+            static fn (string $part): bool => $part !== ''
+        ));
+
+        if ($parts === []) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $first = array_shift($parts);
+        $result = $capitalize_first
+            ? self::uppercaseFirst($first, $this->encoding)
+            : $first;
+
+        foreach ($parts as $part) {
+            $result .= self::uppercaseFirst($part, $this->encoding);
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function toTitle(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        if (function_exists('mb_convert_case')) {
+            $converted = mb_convert_case($this->value, MB_CASE_TITLE_SIMPLE, $this->encoding);
+            $converted = preg_replace_callback(
+                "/(?<=['’])\p{L}/u",
+                function (array $match): string {
+                    if (function_exists('mb_strtoupper')) {
+                        return mb_strtoupper($match[0], $this->encoding);
+                    }
+
+                    return strtoupper($match[0]);
+                },
+                $converted
+            ) ?? $converted;
+        } else {
+            $converted = ucwords(
+                self::lowercaseString($this->value, $this->encoding),
+                " \t\r\n\f\v-'_"
+            );
+        }
+
+        return new self($converted, $this->mode, $this->encoding);
+    }
+
+    public function toPascal(): self
+    {
+        return $this->toCamel(true);
+    }
+
+    /**
+     * @param Regex|array<int, Regex> $pattern
+     * @return array<int|string, string>|null
+     */
+    public function match(Regex|array $pattern): ?array
+    {
+        $patterns = is_array($pattern) ? $pattern : [$pattern];
+
+        if ($patterns === []) {
+            throw new InvalidArgumentException('Pattern array cannot be empty.');
+        }
+
+        $all_matches = [];
+
+        foreach ($patterns as $candidate) {
+            if (!$candidate instanceof Regex) {
+                throw new InvalidArgumentException('All patterns must be instances of Regex.');
+            }
+
+            $matches = [];
+            set_error_handler(
+                static function (int $errno, string $errstr): bool {
+                    throw new ValueError($errstr);
+                }
+            );
+
+            try {
+                $result = preg_match_all((string) $candidate, $this->value, $matches, PREG_SET_ORDER);
+            } finally {
+                restore_error_handler();
+            }
+
+            if ($result > 0) {
+                $all_matches = array_merge($all_matches, $matches);
+            }
+        }
+
+        if ($all_matches === []) {
+            return null;
+        }
+
+        return $all_matches;
     }
 
     public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
@@ -969,6 +1027,18 @@ final class XString implements Stringable
                 }
             }
 
+            if ($search_value instanceof Regex) {
+                $result = self::replaceWithRegex(
+                    $result,
+                    (string) $search_value,
+                    $replacement,
+                    $remaining,
+                    $reversed
+                );
+
+                continue;
+            }
+
             if ($search_value instanceof HtmlTag) {
                 $result = self::replaceHtmlTag(
                     $result,
@@ -1011,6 +1081,17 @@ final class XString implements Stringable
         HtmlTag|Newline|Regex|Stringable|string $replace
     ): self {
         return $this->replace($search, $replace, 1, true);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function strip(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        ?int $limit = null,
+        bool $reversed = false
+    ): self {
+        return $this->replace($search, '', $limit, $reversed);
     }
 
     public function similarityScore(
@@ -1122,6 +1203,78 @@ final class XString implements Stringable
     public function __toString(): string
     {
         return $this->value;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $input_delimiter
+     * @return array<int, string>
+     */
+    private function extractCaseWords(HtmlTag|Newline|Regex|Stringable|string|array $input_delimiter): array
+    {
+        $delimiters = is_array($input_delimiter) ? $input_delimiter : [$input_delimiter];
+        if ($delimiters === []) {
+            throw new InvalidArgumentException('Input delimiter cannot be empty.');
+        }
+
+        $normalized_delimiters = [];
+        foreach ($delimiters as $delimiter) {
+            $fragment = self::normalizeFragment($delimiter);
+            if ($fragment === '') {
+                throw new InvalidArgumentException('Input delimiters cannot be empty.');
+            }
+
+            $normalized_delimiters[$fragment] = true;
+        }
+
+        $normalized_delimiters = array_keys($normalized_delimiters);
+
+        $working = $this->value;
+        $patterns = [
+            '/(?<=\p{Ll})(?=\p{Lu})/u',
+            '/(?<=\p{L})(?=\p{Nd})/u',
+            '/(?<=\p{Nd})(?=\p{L})/u',
+            '/(?<=\p{Lu})(?=\p{Lu}\p{Ll})/u',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $next = preg_replace($pattern, ' ', $working);
+            if ($next !== null) {
+                $working = $next;
+            }
+        }
+
+        if ($normalized_delimiters !== []) {
+            $escaped_parts = array_map(
+                static fn (string $value): string => preg_quote($value, '/'),
+                $normalized_delimiters
+            );
+            $delimiter_pattern = '/(?:' . implode('|', $escaped_parts) . ')+/u';
+            $next = preg_replace($delimiter_pattern, ' ', $working);
+            if ($next !== null) {
+                $working = $next;
+            }
+        }
+
+        $segments = preg_split('/[\s_]+/u', $working);
+        if ($segments === false) {
+            $segments = preg_split('/_+/', $working);
+        }
+
+        $words = [];
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === null) {
+                continue;
+            }
+
+            $segment = trim($segment);
+            if ($segment === '') {
+                continue;
+            }
+
+            $words[] = self::lowercaseString($segment, $this->encoding);
+        }
+
+        return $words;
     }
 
     /**
@@ -1433,6 +1586,130 @@ final class XString implements Stringable
         }
 
         return $subject;
+    }
+
+    private static function replaceWithRegex(
+        string $subject,
+        string $pattern,
+        string $replacement,
+        int &$remaining,
+        bool $reversed
+    ): string {
+        if ($remaining <= 0) {
+            return $subject;
+        }
+
+        if ($reversed) {
+            return self::replaceRegexFromEnd($subject, $pattern, $replacement, $remaining);
+        }
+
+        return self::replaceRegexFromStart($subject, $pattern, $replacement, $remaining);
+    }
+
+    private static function replaceRegexFromStart(string $subject, string $pattern, string $replace, int &$remaining): string
+    {
+        if ($remaining <= 0) {
+            return $subject;
+        }
+
+        $unlimited = $remaining === PHP_INT_MAX;
+        $limit = $unlimited ? -1 : $remaining;
+        $count = 0;
+
+        $result = self::withRegexErrorHandling(
+            static function () use ($pattern, $replace, $subject, $limit, &$count) {
+                return preg_replace($pattern, $replace, $subject, $limit, $count);
+            }
+        );
+
+        if (!is_string($result)) {
+            return $subject;
+        }
+
+        if (!$unlimited) {
+            $remaining = max(0, $remaining - $count);
+        }
+
+        return $result;
+    }
+
+    private static function replaceRegexFromEnd(string $subject, string $pattern, string $replace, int &$remaining): string
+    {
+        if ($remaining <= 0) {
+            return $subject;
+        }
+
+        $unlimited = $remaining === PHP_INT_MAX;
+        $matches = [];
+
+        $matchCount = self::withRegexErrorHandling(
+            static function () use ($pattern, $subject, &$matches) {
+                return preg_match_all($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+            }
+        );
+
+        if (!is_int($matchCount) || $matchCount === 0) {
+            return $subject;
+        }
+
+        $fullMatches = $matches[0] ?? [];
+        if (!is_array($fullMatches) || $fullMatches === []) {
+            return $subject;
+        }
+
+        for ($index = count($fullMatches) - 1; $index >= 0; $index--) {
+            if (!$unlimited && $remaining === 0) {
+                break;
+            }
+
+            $entry = $fullMatches[$index];
+            if (!is_array($entry) || count($entry) < 2) {
+                continue;
+            }
+
+            [$matchedText, $offset] = $entry;
+            if (!is_string($matchedText) || !is_int($offset)) {
+                continue;
+            }
+
+            $replacementText = self::withRegexErrorHandling(
+                static function () use ($pattern, $replace, $matchedText) {
+                    return preg_replace($pattern, $replace, $matchedText, 1);
+                }
+            );
+
+            if (!is_string($replacementText)) {
+                continue;
+            }
+
+            $subject = substr($subject, 0, $offset)
+                . $replacementText
+                . substr($subject, $offset + strlen($matchedText));
+
+            if (!$unlimited) {
+                $remaining--;
+            }
+        }
+
+        return $subject;
+    }
+
+    /**
+     * @return mixed
+     */
+    private static function withRegexErrorHandling(callable $operation)
+    {
+        set_error_handler(
+            static function (int $errno, string $errstr): bool {
+                throw new ValueError($errstr);
+            }
+        );
+
+        try {
+            return $operation();
+        } finally {
+            restore_error_handler();
+        }
     }
 
     private static function replaceLinesStartingWith(
@@ -1900,6 +2177,31 @@ final class XString implements Stringable
         }
 
         return $decoded;
+    }
+
+    private static function uppercaseFirst(string $value, string $encoding): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('mb_substr')) {
+            $first = mb_substr($value, 0, 1, $encoding);
+            $rest = mb_substr($value, 1, null, $encoding);
+
+            if ($first !== false && $rest !== false) {
+                $upper = function_exists('mb_strtoupper')
+                    ? mb_strtoupper($first, $encoding)
+                    : strtoupper($first);
+
+                return $upper . $rest;
+            }
+        }
+
+        $first = substr($value, 0, 1);
+        $rest = substr($value, 1);
+
+        return strtoupper($first) . $rest;
     }
 
     private static function lowercaseString(string $value, string $encoding): string
