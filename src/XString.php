@@ -197,6 +197,11 @@ final class XString implements Stringable
         };
     }
 
+    public function byteLength(): int
+    {
+        return strlen($this->value);
+    }
+
     public function withMode(string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING): self
     {
         return new self($this->value, $mode, $encoding);
@@ -722,8 +727,8 @@ final class XString implements Stringable
     }
 
     /**
-     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $start
-     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $end
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $start
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $end
      */
     public function between(
         HtmlTag|Newline|Regex|Stringable|string|array $start,
@@ -736,8 +741,8 @@ final class XString implements Stringable
             throw new InvalidArgumentException('Skip values must be greater than or equal to 0.');
         }
 
-        $start_sequence = self::normalizeSearchSequence($start);
-        $end_sequence = self::normalizeSearchSequence($end);
+        $start_sequence = self::normalizeSearchOptions($start);
+        $end_sequence = self::normalizeSearchOptions($end);
 
         if ($last_occurence) {
             $start_occurrences = self::findAllSequences($this->value, $start_sequence);
@@ -771,7 +776,62 @@ final class XString implements Stringable
     }
 
     /**
-     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $start
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $end
+     * @return list<string>
+     */
+    public function betweenAll(
+        HtmlTag|Newline|Regex|Stringable|string|array $start,
+        HtmlTag|Newline|Regex|Stringable|string|array $end,
+        bool $reversed = false
+    ): array {
+        $start_sequence = self::normalizeSearchOptions($start);
+        $end_sequence = self::normalizeSearchOptions($end);
+
+        if ($this->value === '') {
+            return [];
+        }
+
+        $results = [];
+        $offset = 0;
+
+        while (true) {
+            $start_match = self::findSequence($this->value, $start_sequence, $offset);
+            if ($start_match === null) {
+                break;
+            }
+
+            $end_match = self::findSequence($this->value, $end_sequence, $start_match['end']);
+            if ($end_match === null) {
+                break;
+            }
+
+            if ($end_match['start'] < $start_match['end']) {
+                $offset = $start_match['end'];
+                continue;
+            }
+
+            $results[] = substr(
+                $this->value,
+                $start_match['end'],
+                $end_match['start'] - $start_match['end']
+            );
+
+            $offset = $end_match['end'];
+        }
+
+        if ($reversed) {
+            $results = array_reverse($results);
+        }
+
+        /** @var list<string> $results */
+        $results = array_values($results);
+
+        return $results;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $search
      */
     public function before(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
@@ -782,7 +842,7 @@ final class XString implements Stringable
             throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
         }
 
-        $sequence = self::normalizeSearchSequence($search);
+        $sequence = self::normalizeSearchOptions($search);
         $occurrences = self::findAllSequences($this->value, $sequence);
 
         if ($occurrences === []) {
@@ -803,7 +863,7 @@ final class XString implements Stringable
     }
 
     /**
-     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $search
      */
     public function after(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
@@ -814,7 +874,7 @@ final class XString implements Stringable
             throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
         }
 
-        $sequence = self::normalizeSearchSequence($search);
+        $sequence = self::normalizeSearchOptions($search);
         $occurrences = self::findAllSequences($this->value, $sequence);
 
         if ($occurrences === []) {
@@ -832,6 +892,139 @@ final class XString implements Stringable
         $match = $occurrences[$index];
 
         return new self(substr($this->value, $match['end']), $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $delimiter
+     * @return list<string>
+     */
+    public function split(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
+    {
+        if ($limit !== null && $limit < 1) {
+            throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
+        }
+
+        if ($this->value === '') {
+            return [];
+        }
+
+        $delimiters = is_array($delimiter) ? $delimiter : [$delimiter];
+        if ($delimiters === []) {
+            throw new InvalidArgumentException('Delimiter list cannot be empty.');
+        }
+
+        $max_parts = $limit ?? PHP_INT_MAX;
+        $parts = [];
+        $offset = 0;
+
+        while (count($parts) + 1 < $max_parts) {
+            $match = self::findNextDelimiterMatch($this->value, $delimiters, $offset);
+            if ($match === null) {
+                break;
+            }
+
+            $parts[] = substr($this->value, $offset, $match['start'] - $offset);
+            $offset = $match['end'];
+        }
+
+        $parts[] = substr($this->value, $offset);
+
+        /** @var list<string> $parts */
+        $parts = array_values($parts);
+
+        return $parts;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $delimiter
+     * @return list<string>
+     */
+    public function explode(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
+    {
+        return $this->split($delimiter, $limit);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function lines(bool $trim = false, ?int $limit = null): array
+    {
+        if ($limit !== null && $limit < 1) {
+            throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
+        }
+
+        if ($this->value === '') {
+            return [];
+        }
+
+        $segments = self::withRegexErrorHandling(
+            fn () => preg_split('/\r\n|\r|\n/', $this->value, $limit ?? -1)
+        );
+
+        if (!is_array($segments) || $segments === false) {
+            $segments = [$this->value];
+        }
+
+        if ($segments === ['']) {
+            return [];
+        }
+
+        if ($trim) {
+            $segments = array_map(static fn (string $line): string => trim($line), $segments);
+        }
+
+        /** @var list<string> $segments */
+        $segments = array_values($segments);
+
+        return $segments;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function words(bool $trim = false, ?int $limit = null): array
+    {
+        if ($limit !== null && $limit < 1) {
+            throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
+        }
+
+        if ($this->value === '') {
+            return [];
+        }
+
+        $segments = self::withRegexErrorHandling(
+            fn () => preg_split('/[\s\p{Z}]+/u', $this->value, $limit ?? -1, PREG_SPLIT_NO_EMPTY)
+        );
+
+        if (!is_array($segments) || $segments === false) {
+            $segments = preg_split('/\s+/', $this->value, $limit ?? -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        if (!is_array($segments) || $segments === false) {
+            $segments = [];
+        }
+
+        if ($segments === []) {
+            return [];
+        }
+
+        if ($trim) {
+            $segments = array_map(
+                static fn (string $word): string => trim($word, " \t\r\n\f\v\"'.,;:!?()[]{}<>-_")
+                ,
+                $segments
+            );
+            $segments = array_values(array_filter(
+                $segments,
+                static fn (string $word): bool => $word !== ''
+            ));
+
+            /** @var list<string> $segments */
+            return $segments;
+        }
+
+        /** @var list<string> $segments */
+        return array_values($segments);
     }
 
     /**
@@ -1281,28 +1474,42 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $value
      * @return list<string>
      */
-    private static function normalizeSearchSequence(HtmlTag|Newline|Regex|Stringable|string|array $value): array
+    /**
+     * @return list<list<string>>
+     */
+    private static function normalizeSearchOptions(HtmlTag|Newline|Regex|Stringable|string|array $value): array
     {
         $items = is_array($value) ? $value : [$value];
         if ($items === []) {
             throw new InvalidArgumentException('Search sequence cannot be empty.');
         }
 
-        $sequence = [];
+        $options = [];
         foreach ($items as $item) {
-            if ($item instanceof Newline) {
-                $fragment = self::canonicalizeLineBreak((string) $item);
-            } else {
-                $fragment = self::normalizeFragment($item);
-            }
-            if ($fragment === '') {
-                throw new InvalidArgumentException('Search sequence values cannot be empty.');
+            $sequence_items = is_array($item) ? $item : [$item];
+            if ($sequence_items === []) {
+                throw new InvalidArgumentException('Search sequence cannot be empty.');
             }
 
-            $sequence[] = $fragment;
+            $sequence = [];
+            foreach ($sequence_items as $fragment_value) {
+                if ($fragment_value instanceof Newline) {
+                    $fragment = self::canonicalizeLineBreak((string) $fragment_value);
+                } else {
+                    $fragment = self::normalizeFragment($fragment_value);
+                }
+
+                if ($fragment === '') {
+                    throw new InvalidArgumentException('Search sequence values cannot be empty.');
+                }
+
+                $sequence[] = $fragment;
+            }
+
+            $options[] = $sequence;
         }
 
-        return $sequence;
+        return $options;
     }
 
     private static function canonicalizeLineBreak(string $line_break): string
@@ -1315,48 +1522,62 @@ final class XString implements Stringable
     }
 
     /**
-     * @param list<string> $sequence
+     * @param list<list<string>> $options
      * @return array{start: int, end: int}|null
      */
-    private static function findSequence(string $subject, array $sequence, int $offset): ?array
+    private static function findSequence(string $subject, array $options, int $offset): ?array
     {
-        $current_offset = max(0, $offset);
-        $start = null;
+        $best_match = null;
 
-        foreach ($sequence as $fragment) {
-            $position = strpos($subject, $fragment, $current_offset);
-            if ($position === false) {
-                return null;
+        foreach ($options as $sequence) {
+            $current_offset = max(0, $offset);
+            $start = null;
+
+            foreach ($sequence as $fragment) {
+                $position = strpos($subject, $fragment, $current_offset);
+                if ($position === false) {
+                    continue 2;
+                }
+
+                if ($start === null) {
+                    $start = $position;
+                }
+
+                $current_offset = $position + strlen($fragment);
             }
 
             if ($start === null) {
-                $start = $position;
+                continue;
             }
 
-            $current_offset = $position + strlen($fragment);
+            $match = [
+                'start' => $start,
+                'end' => $current_offset,
+            ];
+
+            if (
+                $best_match === null
+                || $match['start'] < $best_match['start']
+                || ($match['start'] === $best_match['start'] && $match['end'] > $best_match['end'])
+            ) {
+                $best_match = $match;
+            }
         }
 
-        if ($start === null) {
-            return null;
-        }
-
-        return [
-            'start' => $start,
-            'end' => $current_offset,
-        ];
+        return $best_match;
     }
 
     /**
-     * @param list<string> $sequence
+     * @param list<list<string>> $options
      * @return list<array{start: int, end: int}>
      */
-    private static function findAllSequences(string $subject, array $sequence): array
+    private static function findAllSequences(string $subject, array $options): array
     {
         $occurrences = [];
         $offset = 0;
 
         while (true) {
-            $match = self::findSequence($subject, $sequence, $offset);
+            $match = self::findSequence($subject, $options, $offset);
             if ($match === null) {
                 break;
             }
@@ -1374,16 +1595,16 @@ final class XString implements Stringable
     }
 
     /**
-     * @param list<string> $sequence
+     * @param list<list<string>> $options
      * @return array{start: int, end: int}|null
      */
-    private static function findSequenceWithSkip(string $subject, array $sequence, int $offset, int $skip): ?array
+    private static function findSequenceWithSkip(string $subject, array $options, int $offset, int $skip): ?array
     {
         $current_offset = max(0, $offset);
         $remaining = $skip;
 
         while (true) {
-            $match = self::findSequence($subject, $sequence, $current_offset);
+            $match = self::findSequence($subject, $options, $current_offset);
             if ($match === null) {
                 return null;
             }
@@ -1875,6 +2096,100 @@ final class XString implements Stringable
         }
 
         return null;
+    }
+
+    /**
+     * @param array<int, HtmlTag|Newline|Regex|Stringable|string> $delimiters
+     * @return array{start: int, end: int}|null
+     */
+    private static function findNextDelimiterMatch(string $subject, array $delimiters, int $offset): ?array
+    {
+        $best_match = null;
+
+        foreach ($delimiters as $delimiter) {
+            if ($delimiter instanceof HtmlTag) {
+                $match = self::findNextHtmlTagMatch($subject, $delimiter, $offset);
+                if ($match === null) {
+                    continue;
+                }
+
+                $candidate = [
+                    'start' => $match['offset'],
+                    'end' => $match['offset'] + $match['length'],
+                ];
+            } elseif ($delimiter instanceof Regex) {
+                $candidate = self::findNextRegexDelimiter($subject, (string) $delimiter, $offset);
+                if ($candidate === null) {
+                    continue;
+                }
+            } else {
+                $fragment = $delimiter instanceof Newline
+                    ? (string) $delimiter
+                    : self::normalizeFragment($delimiter);
+
+                if ($fragment === '') {
+                    throw new InvalidArgumentException('Delimiter cannot be empty.');
+                }
+
+                $position = strpos($subject, $fragment, max(0, $offset));
+                if ($position === false && $delimiter instanceof Newline) {
+                    $canonical = self::canonicalizeLineBreak($fragment);
+                    if ($canonical !== '' && $canonical !== $fragment) {
+                        $position = strpos($subject, $canonical, max(0, $offset));
+                        if ($position !== false) {
+                            $fragment = $canonical;
+                        }
+                    }
+                }
+
+                if ($position === false) {
+                    continue;
+                }
+
+                $candidate = [
+                    'start' => $position,
+                    'end' => $position + strlen($fragment),
+                ];
+            }
+
+            if ($best_match === null
+                || $candidate['start'] < $best_match['start']
+                || ($candidate['start'] === $best_match['start'] && $candidate['end'] > $best_match['end'])
+            ) {
+                $best_match = $candidate;
+            }
+        }
+
+        return $best_match;
+    }
+
+    /**
+     * @return array{start: int, end: int}|null
+     */
+    private static function findNextRegexDelimiter(string $subject, string $pattern, int $offset): ?array
+    {
+        $matches = [];
+        $result = self::withRegexErrorHandling(
+            static function () use ($pattern, $subject, $offset, &$matches) {
+                return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE, max(0, $offset));
+            }
+        );
+
+        if ($result !== 1) {
+            return null;
+        }
+
+        $match_string = $matches[0][0];
+        $match_offset = $matches[0][1];
+
+        if ($match_string === '') {
+            throw new InvalidArgumentException('Regex delimiter cannot match an empty string.');
+        }
+
+        return [
+            'start' => $match_offset,
+            'end' => $match_offset + strlen($match_string),
+        ];
     }
 
     private static function buildHtmlTagPattern(HtmlTag $tag): string

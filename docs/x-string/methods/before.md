@@ -33,13 +33,14 @@ public function before(Newline|HtmlTag|Regex|string|array $search, $last_occuren
 ## Description
 
 Returns a new `XString` containing the substring that appears before the specified delimiter. You can skip a number of matches
-or run the lookup from the end of the string. Arrays may be supplied to resolve multi-step delimiters sequentially.
+or run the lookup from the end of the string. Arrays may be supplied to offer alternative delimiters, and nested arrays enforce
+multi-step sequences when needed.
 
 ## Important notes and considerations
 
 - **Directional searches.** Passing `$last_occurence = true` searches from the end of the string. In that case `$skip` counts from the
   end as well.
-- **Array delimiters.** When arrays are supplied, each fragment is resolved in sequence, allowing you to match compound markers.
+- **Array delimiters.** Provide arrays of scalars to treat them as OR delimiters. Wrap fragments inside their own arrays (e.g. `[['<h2>', '<strong>']]`) to demand sequential matching.
 - **Graceful fallback.** If the delimiter cannot be found, the original value is returned unchanged.
 - **Immutable.** The original instance is never modified.
 
@@ -47,7 +48,7 @@ or run the lookup from the end of the string. Arrays may be supplied to resolve 
 
 | Name | Type | Default | Description |
 | --- | --- | --- | --- |
-| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. Arrays are matched sequentially. |
+| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. Arrays act as OR delimiters; nest arrays to match sequences. |
 | `$last_occurence` | `bool` | `false` | Search from the end of the string. |
 | `$skip` | `int` | `0` | Number of delimiter occurrences to skip before returning a result. |
 

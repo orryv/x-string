@@ -34,14 +34,13 @@ public function between(Newline|HtmlTag|Regex|string|array $start, Newline|HtmlT
 ## Description
 
 Returns the substring located between two delimiters. You can search forwards or backwards, skip a number of opening and
-closing delimiters, and even provide arrays to chain multiple markers. When arrays are supplied the method searches for the
-first element, then continues searching from that position for the next element, and so on. A fresh `XString` instance is
-returned, preserving the original mode and encoding.
+closing delimiters, and even provide arrays to offer multiple delimiter options. Use nested arrays when you need to enforce
+ordered sequences of fragments. A fresh `XString` instance is returned, preserving the original mode and encoding.
 
 ## Important notes and considerations
 
-- **Chained sequences.** When arrays are given for `$start` or `$end`, the method resolves them sequentially. This is useful for
-  nested HTML fragments or markers spread over multiple tokens.
+- **Flexible delimiters.** Provide arrays of scalars to treat each value as an acceptable delimiter. Wrap fragments inside their
+  own arrays (e.g. `[['<article>', '<section>']]`) when they must be matched sequentially.
 - **Directional searches.** Set `$last_occurence` to `true` to work from the end of the string. `$skip_start` counts start delimiters
   from the end, while `$skip_end` still counts occurrences forward after the selected start.
 - **Graceful fallbacks.** If the requested start or end delimiters are not found, an empty string is returned.
@@ -51,8 +50,8 @@ returned, preserving the original mode and encoding.
 
 | Name | Type | Default | Description |
 | --- | --- | --- | --- |
-| `$start` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Opening delimiter(s) to locate. Arrays are resolved sequentially. |
-| `$end` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Closing delimiter(s) to locate. Arrays are resolved sequentially. |
+| `$start` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Opening delimiter(s) to locate. Arrays provide OR semantics; nest sequences to require ordering. |
+| `$end` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Closing delimiter(s) to locate. Arrays provide OR semantics; nest sequences to require ordering. |
 | `$last_occurence` | `bool` | `false` | Search from the end of the string instead of the beginning. |
 | `$skip_start` | `int` | `0` | Number of start occurrences to skip before selecting one. |
 | `$skip_end` | `int` | `0` | Number of end occurrences to skip (after the start has been chosen). |
@@ -123,7 +122,7 @@ $result = $text->between('[', ']', last_occurence: true);
 use Orryv\XString;
 
 $html = XString::new('<article><section><p>Body</p></section></article>');
-$result = $html->between(['<article>', '<section>', '<p>'], ['</p>', '</section>']);
+$result = $html->between([['<article>', '<section>', '<p>']], [['</p>', '</section>']]);
 #Test: self::assertSame('Body', (string) $result);
 ```
 

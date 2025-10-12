@@ -42,7 +42,7 @@ final class BetweenTest extends TestCase
     public function testBetweenSequences(): void
     {
         $html = XString::new('<article><section><p>Body</p></section></article>');
-        $result = $html->between(['<article>', '<section>', '<p>'], ['</p>', '</section>']);
+        $result = $html->between([['<article>', '<section>', '<p>']], [['</p>', '</section>']]);
         self::assertSame('Body', (string) $result);
     }
 

@@ -428,7 +428,7 @@ final class HtmlTag implements Stringable
             return false;
         }
 
-        $ending = $this->selfClosing ? '\\s*\/>' : '\\s*\/?>';
+        $ending = '\\s*\/?>';
         $pattern = sprintf(
             '/^<\\s*%s\\b([^>]*)%s$/%s',
             preg_quote($this->rawTagName, '/'),
@@ -499,10 +499,6 @@ final class HtmlTag implements Stringable
                     return false;
                 }
             }
-        }
-
-        if ($this->selfClosing) {
-            return str_ends_with($trimmed, '/>');
         }
 
         return true;
