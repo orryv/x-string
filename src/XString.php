@@ -735,14 +735,16 @@ final class XString implements Stringable
         HtmlTag|Newline|Regex|Stringable|string|array $end,
         bool $last_occurence = false,
         int $skip_start = 0,
-        int $skip_end = 0
+        int $skip_end = 0,
+        string $start_behavior = 'sequential',
+        string $end_behavior = 'sequential'
     ): self {
         if ($skip_start < 0 || $skip_end < 0) {
             throw new InvalidArgumentException('Skip values must be greater than or equal to 0.');
         }
 
-        $start_sequence = self::normalizeSearchOptions($start);
-        $end_sequence = self::normalizeSearchOptions($end);
+        $start_sequence = self::normalizeSearchOptions($start, $start_behavior);
+        $end_sequence = self::normalizeSearchOptions($end, $end_behavior);
 
         if ($last_occurence) {
             $start_occurrences = self::findAllSequences($this->value, $start_sequence);
@@ -783,10 +785,12 @@ final class XString implements Stringable
     public function betweenAll(
         HtmlTag|Newline|Regex|Stringable|string|array $start,
         HtmlTag|Newline|Regex|Stringable|string|array $end,
-        bool $reversed = false
+        bool $reversed = false,
+        string $start_behavior = 'sequential',
+        string $end_behavior = 'sequential'
     ): array {
-        $start_sequence = self::normalizeSearchOptions($start);
-        $end_sequence = self::normalizeSearchOptions($end);
+        $start_sequence = self::normalizeSearchOptions($start, $start_behavior);
+        $end_sequence = self::normalizeSearchOptions($end, $end_behavior);
 
         if ($this->value === '') {
             return [];
@@ -836,13 +840,14 @@ final class XString implements Stringable
     public function before(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         bool $last_occurence = false,
-        int $skip = 0
+        int $skip = 0,
+        string $start_behavior = 'sequential'
     ): self {
         if ($skip < 0) {
             throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
         }
 
-        $sequence = self::normalizeSearchOptions($search);
+        $sequence = self::normalizeSearchOptions($search, $start_behavior);
         $occurrences = self::findAllSequences($this->value, $sequence);
 
         if ($occurrences === []) {
@@ -868,13 +873,14 @@ final class XString implements Stringable
     public function after(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         bool $last_occurence = false,
-        int $skip = 0
+        int $skip = 0,
+        string $start_behavior = 'sequential'
     ): self {
         if ($skip < 0) {
             throw new InvalidArgumentException('Skip must be greater than or equal to 0.');
         }
 
-        $sequence = self::normalizeSearchOptions($search);
+        $sequence = self::normalizeSearchOptions($search, $start_behavior);
         $occurrences = self::findAllSequences($this->value, $sequence);
 
         if ($occurrences === []) {
@@ -1477,7 +1483,34 @@ final class XString implements Stringable
     /**
      * @return list<list<string>>
      */
-    private static function normalizeSearchOptions(HtmlTag|Newline|Regex|Stringable|string|array $value): array
+    private static function normalizeSearchOptions(
+        HtmlTag|Newline|Regex|Stringable|string|array $value,
+        string $behavior
+    ): array
+    {
+        $normalized_behavior = self::normalizeSearchBehavior($behavior);
+
+        if ($normalized_behavior === 'or') {
+            return self::normalizeSearchOptionsOrBehavior($value);
+        }
+
+        return self::normalizeSearchOptionsSequentialBehavior($value);
+    }
+
+    private static function normalizeSearchBehavior(string $behavior): string
+    {
+        $normalized = strtolower($behavior);
+        if (!in_array($normalized, ['sequential', 'or'], true)) {
+            throw new InvalidArgumentException('Search behavior must be either "sequential" or "or".');
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return list<list<string>>
+     */
+    private static function normalizeSearchOptionsOrBehavior(HtmlTag|Newline|Regex|Stringable|string|array $value): array
     {
         $items = is_array($value) ? $value : [$value];
         if ($items === []) {
@@ -1493,12 +1526,7 @@ final class XString implements Stringable
 
             $sequence = [];
             foreach ($sequence_items as $fragment_value) {
-                if ($fragment_value instanceof Newline) {
-                    $fragment = self::canonicalizeLineBreak((string) $fragment_value);
-                } else {
-                    $fragment = self::normalizeFragment($fragment_value);
-                }
-
+                $fragment = self::normalizeSearchFragment($fragment_value);
                 if ($fragment === '') {
                     throw new InvalidArgumentException('Search sequence values cannot be empty.');
                 }
@@ -1510,6 +1538,59 @@ final class XString implements Stringable
         }
 
         return $options;
+    }
+
+    /**
+     * @return list<list<string>>
+     */
+    private static function normalizeSearchOptionsSequentialBehavior(
+        HtmlTag|Newline|Regex|Stringable|string|array $value
+    ): array {
+        if (!is_array($value)) {
+            $fragment = self::normalizeSearchFragment($value);
+            if ($fragment === '') {
+                throw new InvalidArgumentException('Search sequence values cannot be empty.');
+            }
+
+            return [[$fragment]];
+        }
+
+        if ($value === []) {
+            throw new InvalidArgumentException('Search sequence cannot be empty.');
+        }
+
+        $has_nested_arrays = false;
+        foreach ($value as $item) {
+            if (is_array($item)) {
+                $has_nested_arrays = true;
+                break;
+            }
+        }
+
+        if (!$has_nested_arrays) {
+            $sequence = [];
+            foreach ($value as $fragment_value) {
+                $fragment = self::normalizeSearchFragment($fragment_value);
+                if ($fragment === '') {
+                    throw new InvalidArgumentException('Search sequence values cannot be empty.');
+                }
+
+                $sequence[] = $fragment;
+            }
+
+            return [$sequence];
+        }
+
+        return self::normalizeSearchOptionsOrBehavior($value);
+    }
+
+    private static function normalizeSearchFragment(mixed $value): string
+    {
+        if ($value instanceof Newline) {
+            return self::canonicalizeLineBreak((string) $value);
+        }
+
+        return self::normalizeFragment($value);
     }
 
     private static function canonicalizeLineBreak(string $line_break): string

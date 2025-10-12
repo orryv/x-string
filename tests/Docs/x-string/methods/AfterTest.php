@@ -7,6 +7,9 @@ namespace Orryv\XArray\Tests\Docs\XString\Methods;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
 
 final class AfterTest extends TestCase
 {
@@ -45,6 +48,33 @@ final class AfterTest extends TestCase
         $after = $value->after('-');
         self::assertSame('abc-def', (string) $value);
         self::assertSame('def', (string) $after);
+    }
+
+    public function testAfterMixedSequential(): void
+    {
+        $text = XString::new("<header>\nTitle: Report</header>\nSummary");
+        $result = $text->after([
+            HtmlTag::new('header'),
+            Newline::new("\n"),
+            'Title: ',
+            Regex::new('Report'),
+            HtmlTag::closeTag('header'),
+            Newline::new("\n"),
+        ]);
+        self::assertSame('Summary', (string) $result);
+    }
+
+    public function testAfterOrBehavior(): void
+    {
+        $value = XString::new("<note>Alpha</note>\n{Beta}\nResult: Gamma");
+        $sequential = $value->after([HtmlTag::new('note'), Regex::new('</note>')]);
+        $mixed = $value->after([
+            HtmlTag::new('note'),
+            Regex::new('{'),
+            [Newline::new("\n"), Regex::new('Result: ')],
+        ], skip: 1, start_behavior: 'or');
+        self::assertSame("\n{Beta}\nResult: Gamma", (string) $sequential);
+        self::assertSame('Gamma', (string) $mixed);
     }
 
     public function testAfterInvalidSkip(): void

@@ -15,6 +15,8 @@
     - [Search from the end of the string](#search-from-the-end-of-the-string)
     - [Return the original string when missing](#return-the-original-string-when-missing)
     - [Immutability check](#immutability-check)
+    - [Use mixed delimiter types sequentially](#use-mixed-delimiter-types-sequentially)
+    - [Choose between sequential and OR behavior](#choose-between-sequential-and-or-behavior)
     - [Reject negative skip values](#reject-negative-skip-values)
   - [One-line API table entry](#one-line-api-table-entry)
 
@@ -23,7 +25,7 @@
 **Signature:**
 
 ```php
-public function after(Newline|HtmlTag|Regex|string|array $search, $last_occurence = false, int $skip = 0): self
+public function after(Newline|HtmlTag|Regex|string|array $search, $last_occurence = false, int $skip = 0, string $start_behavior = 'sequential'): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -33,15 +35,14 @@ public function after(Newline|HtmlTag|Regex|string|array $search, $last_occurenc
 ## Description
 
 Returns a new `XString` containing the substring that appears after the specified delimiter. Supports forward and reverse
-searching, skipping occurrences, and resolving compound delimiters through arrays. Provide arrays to offer alternative
-delimiters, and nest them when fragments must appear sequentially.
+searching, skipping occurrences, and resolving compound delimiters through arrays. Provide arrays and choose whether they
+should be interpreted sequentially (default) or as independent alternatives via the `$start_behavior` flag.
 
 ## Important notes and considerations
 
 - **Directional searches.** When `$last_occurence` is `true`, the search begins from the end of the string and `$skip` counts from the
   end as well.
-- **Array delimiters.** Provide arrays of scalars to treat them as OR delimiters. Wrap fragments inside their own arrays when
-  multiple pieces must be matched consecutively.
+- **Array delimiters.** Provide arrays of scalars and pick `'sequential'` (match fragments in order) or `'or'` (treat each entry as an alternative) to suit your use case.
 - **Graceful fallback.** If the delimiter is absent, the original string is returned.
 - **Immutable.** The source instance remains unchanged.
 
@@ -49,9 +50,10 @@ delimiters, and nest them when fragments must appear sequentially.
 
 | Name | Type | Default | Description |
 | --- | --- | --- | --- |
-| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. Arrays act as OR delimiters; nest arrays to enforce sequences. |
+| `$search` | `Newline\|HtmlTag\|Regex\|string\|array` | — | Delimiter(s) to search for. |
 | `$last_occurence` | `bool` | `false` | Search from the end of the string instead of the beginning. |
 | `$skip` | `int` | `0` | Number of delimiter occurrences to skip before selecting one. |
+| `$start_behavior` | `'sequential'\|'or'` | `'sequential'` | How arrays passed to `$search` should be matched. Sequential mode enforces ordering; OR mode accepts any fragment. |
 
 ## Returns
 
@@ -124,6 +126,48 @@ $after = $value->after('-');
 #Test: self::assertSame('def', (string) $after);
 ```
 
+### Use mixed delimiter types sequentially
+
+<!-- test:after-mixed-sequential -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
+
+$text = XString::new("<header>\nTitle: Report</header>\nSummary");
+$result = $text->after([
+    HtmlTag::new('header'),
+    Newline::new("\n"),
+    'Title: ',
+    Regex::new('Report'),
+    HtmlTag::closeTag('header'),
+    Newline::new("\n"),
+]);
+
+#Test: self::assertSame('Summary', (string) $result);
+```
+
+### Choose between sequential and OR behavior
+
+<!-- test:after-or-behavior -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+use Orryv\XString\Newline;
+use Orryv\XString\Regex;
+
+$value = XString::new("<note>Alpha</note>\n{Beta}\nResult: Gamma");
+$sequential = $value->after([HtmlTag::new('note'), Regex::new('</note>')]);
+$mixed = $value->after([
+    HtmlTag::new('note'),
+    Regex::new('{'),
+    [Newline::new("\n"), Regex::new('Result: ')],
+], skip: 1, start_behavior: 'or');
+#Test: self::assertSame("\n{Beta}\nResult: Gamma", (string) $sequential);
+#Test: self::assertSame('Gamma', (string) $mixed);
+```
+
 ### Reject negative skip values
 
 <!-- test:after-invalid-skip -->
@@ -140,4 +184,4 @@ $value->after('e', skip: -1);
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::after` | `public function after(Newline\|HtmlTag\|Regex\|string\|array $search, $last_occurence = false, int $skip = 0): self` — Return the substring after a chosen delimiter with optional reverse traversal and skip support. |
+| `XString::after` | `public function after(Newline\|HtmlTag\|Regex\|string\|array $search, $last_occurence = false, int $skip = 0, string $start_behavior = 'sequential'): self` — Return the substring after a chosen delimiter with optional reverse traversal, skip support, and configurable delimiter behavior. |
