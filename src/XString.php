@@ -650,38 +650,67 @@ final class XString implements Stringable
         $mask_units = self::splitGraphemes($pattern, $this->encoding);
         $source_units = self::splitByMode($this->value, $this->mode, $this->encoding);
 
-        $result = '';
         $source_count = count($source_units);
+        $result_units = [];
 
         if ($reversed) {
-            $placeholder_count = 0;
+            $source_index = $source_count - 1;
+            $digits_used = 0;
+            $placeholders_remaining = 0;
+
             foreach ($mask_units as $mask_unit) {
                 if ($mask_unit === $placeholder_unit) {
-                    $placeholder_count++;
+                    $placeholders_remaining++;
                 }
             }
 
-            $source_index = max(0, $source_count - $placeholder_count);
+            for ($index = count($mask_units) - 1; $index >= 0; $index--) {
+                $mask_unit = $mask_units[$index];
+
+                if ($mask_unit === $placeholder_unit) {
+                    if ($source_index >= 0) {
+                        $result_units[] = $source_units[$source_index];
+                        $source_index--;
+                        $digits_used++;
+                    }
+
+                    if ($placeholders_remaining > 0) {
+                        $placeholders_remaining--;
+                    }
+
+                    continue;
+                }
+
+                if ($source_index >= 0 || ($digits_used > 0 && $placeholders_remaining === 0)) {
+                    $result_units[] = $mask_unit;
+                }
+            }
+
+            $result_units = array_reverse($result_units);
         } else {
             $source_index = 0;
-        }
+            $digits_used = 0;
 
-        foreach ($mask_units as $mask_unit) {
-            if ($mask_unit === $placeholder_unit) {
-                if ($source_index < $source_count) {
-                    $result .= $source_units[$source_index];
-                    $source_index++;
-                } else {
-                    break;
+            foreach ($mask_units as $mask_unit) {
+                if ($mask_unit === $placeholder_unit) {
+                    if ($source_index < $source_count) {
+                        $result_units[] = $source_units[$source_index];
+                        $source_index++;
+                        $digits_used++;
+                    } else {
+                        break;
+                    }
+
+                    continue;
                 }
 
-                continue;
+                if ($digits_used > 0 || $source_index < $source_count) {
+                    $result_units[] = $mask_unit;
+                }
             }
-
-            $result .= $mask_unit;
         }
 
-        return new self($result, $this->mode, $this->encoding);
+        return new self(implode('', $result_units), $this->mode, $this->encoding);
     }
 
     public function collapseWhitespace(bool $space = true, bool $tab = true, bool $newline = false): self
