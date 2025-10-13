@@ -1226,9 +1226,9 @@ final class XString implements Stringable
 
     /**
      * @param Regex|array<int, Regex> $pattern
-     * @return array<int|string, string>|null
+     * @return self|null
      */
-    public function match(Regex|array $pattern): ?array
+    public function match(Regex|array $pattern, int $offset = 0): ?self
     {
         $patterns = is_array($pattern) ? $pattern : [$pattern];
 
@@ -1236,7 +1236,11 @@ final class XString implements Stringable
             throw new InvalidArgumentException('Pattern array cannot be empty.');
         }
 
-        $all_matches = [];
+        if ($offset < 0) {
+            throw new InvalidArgumentException('Offset must be greater than or equal to 0.');
+        }
+
+        $bestMatch = null;
 
         foreach ($patterns as $candidate) {
             if (!$candidate instanceof Regex) {
@@ -1244,28 +1248,125 @@ final class XString implements Stringable
             }
 
             $matches = [];
-            set_error_handler(
-                static function (int $errno, string $errstr): bool {
-                    throw new ValueError($errstr);
+            $result = self::withRegexErrorHandling(
+                function () use (&$matches, $candidate, $offset) {
+                    return preg_match(
+                        (string) $candidate,
+                        $this->value,
+                        $matches,
+                        PREG_OFFSET_CAPTURE,
+                        $offset
+                    );
                 }
             );
 
-            try {
-                $result = preg_match_all((string) $candidate, $this->value, $matches, PREG_SET_ORDER);
-            } finally {
-                restore_error_handler();
-            }
+            if (is_int($result) && $result > 0 && isset($matches[0]) && is_array($matches[0])) {
+                $matchOffset = $matches[0][1];
 
-            if ($result > 0) {
-                $all_matches = array_merge($all_matches, $matches);
+                if (!is_int($matchOffset)) {
+                    continue;
+                }
+
+                if ($bestMatch === null || $matchOffset < $bestMatch['offset']) {
+                    $bestMatch = [
+                        'value' => $matches[0][0],
+                        'offset' => $matchOffset,
+                    ];
+                }
             }
         }
 
-        if ($all_matches === []) {
+        if ($bestMatch === null) {
             return null;
         }
 
-        return $all_matches;
+        return new self($bestMatch['value'], $this->mode, $this->encoding);
+    }
+
+    public function matchAll(
+        Regex|array $pattern,
+        false|int $limit = false,
+        array|int|null $flags = PREG_PATTERN_ORDER
+    ): array {
+        $patterns = is_array($pattern) ? $pattern : [$pattern];
+        if ($patterns === []) {
+            throw new InvalidArgumentException('Pattern array cannot be empty.');
+        }
+
+        if ($limit !== false && $limit < 0) {
+            throw new InvalidArgumentException('Limit must be greater than or equal to 0 or false.');
+        }
+
+        $normalized_flags = self::normalizeMatchAllFlags($flags);
+        $use_set_order = ($normalized_flags & PREG_SET_ORDER) === PREG_SET_ORDER;
+
+        if ($limit === 0) {
+            return [];
+        }
+
+        $remaining = $limit === false ? null : $limit;
+
+        $aggregate = $use_set_order ? [] : [];
+
+        foreach ($patterns as $candidate) {
+            if (!$candidate instanceof Regex) {
+                throw new InvalidArgumentException('All patterns must be instances of Regex.');
+            }
+
+            if ($remaining !== null && $remaining === 0) {
+                break;
+            }
+
+            $matches = [];
+            $match_count = self::withRegexErrorHandling(
+                function () use (&$matches, $candidate, $normalized_flags) {
+                    return preg_match_all((string) $candidate, $this->value, $matches, $normalized_flags);
+                }
+            );
+
+            if (!is_int($match_count) || $match_count === 0) {
+                continue;
+            }
+
+            if ($remaining !== null && $match_count > $remaining) {
+                if ($use_set_order) {
+                    $matches = array_slice($matches, 0, $remaining);
+                    $match_count = count($matches);
+                } else {
+                    foreach ($matches as &$group) {
+                        if (is_array($group)) {
+                            $group = array_slice($group, 0, $remaining);
+                        }
+                    }
+                    unset($group);
+                    $match_count = $remaining;
+                }
+            }
+
+            if ($use_set_order) {
+                $aggregate = array_merge($aggregate, $matches);
+            } else {
+                foreach ($matches as $key => $group) {
+                    if (!array_key_exists($key, $aggregate)) {
+                        $aggregate[$key] = [];
+                    }
+
+                    if (is_array($group)) {
+                        $aggregate[$key] = array_merge($aggregate[$key], $group);
+                    }
+                }
+            }
+
+            if ($remaining !== null) {
+                $remaining -= $match_count;
+            }
+        }
+
+        if ($use_set_order) {
+            return array_values($aggregate);
+        }
+
+        return $aggregate;
     }
 
     public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
@@ -1853,6 +1954,208 @@ final class XString implements Stringable
             $this->mode,
             $this->encoding
         );
+    }
+
+    public function transliterate(string $to = 'ASCII//TRANSLIT'): self
+    {
+        $target = trim($to);
+        if ($target === '') {
+            throw new InvalidArgumentException('Target transliteration cannot be empty.');
+        }
+
+        if (class_exists('\\Transliterator')) {
+            $transliterator = \Transliterator::create($target);
+            if ($transliterator instanceof \Transliterator) {
+                $transliterated = $transliterator->transliterate($this->value);
+                if ($transliterated === null) {
+                    throw new RuntimeException(sprintf('Unable to transliterate string using "%s".', $target));
+                }
+
+                return new self($transliterated, $this->mode, $this->encoding);
+            }
+
+            if (strpos($target, '//') === false) {
+                throw new InvalidArgumentException(sprintf('Unknown transliterator identifier "%s".', $target));
+            }
+        } elseif (strpos($target, '//') === false) {
+            throw new RuntimeException('The intl extension is required to use transliterator identifiers.');
+        }
+
+        if (!function_exists('iconv')) {
+            throw new RuntimeException('The iconv extension is required for transliteration.');
+        }
+
+        $converted = @iconv($this->encoding, $target, $this->value);
+        if ($converted === false) {
+            throw new RuntimeException(sprintf('Unable to transliterate string from %s to %s.', $this->encoding, $target));
+        }
+
+        return new self($converted, $this->mode, self::baseEncoding($target));
+    }
+
+    public function toEncoding(string $to_encoding, ?string $from_encoding = null): self
+    {
+        $normalized_target = self::normalizeEncoding($to_encoding);
+        $target_base = self::baseEncoding($normalized_target);
+
+        $normalized_source = $from_encoding !== null
+            ? self::normalizeEncoding($from_encoding)
+            : ($this->detectEncoding([$this->encoding, $target_base, 'UTF-8', 'ISO-8859-1', 'ASCII'])
+                ?: $this->encoding);
+
+        $converted = self::convertEncoding($this->value, $normalized_target, $normalized_source);
+
+        return new self($converted, $this->mode, $target_base);
+    }
+
+    public function detectEncoding(array $encodings = ['UTF-8', 'ISO-8859-1', 'ASCII']): string|false
+    {
+        if ($encodings === []) {
+            throw new InvalidArgumentException('Encoding list cannot be empty.');
+        }
+
+        $normalized = [];
+        foreach ($encodings as $encoding) {
+            $normalized[self::normalizeEncoding($encoding)] = true;
+        }
+
+        $candidates = array_keys($normalized);
+
+        if (function_exists('mb_detect_encoding')) {
+            try {
+                $detected = mb_detect_encoding($this->value, $candidates, true);
+            } catch (ValueError) {
+                $detected = false;
+            }
+
+            if (is_string($detected)) {
+                return $detected;
+            }
+        }
+
+        if (function_exists('iconv')) {
+            foreach ($candidates as $candidate) {
+                $result = @iconv($candidate, $candidate, $this->value);
+                if ($result !== false) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function isValidEncoding(?string $encoding = null): bool
+    {
+        $target = $encoding !== null
+            ? self::normalizeEncoding($encoding)
+            : $this->encoding;
+
+        if (function_exists('mb_check_encoding')) {
+            return @mb_check_encoding($this->value, $target);
+        }
+
+        if (function_exists('iconv')) {
+            return @iconv($target, $target, $this->value) !== false;
+        }
+
+        if (strcasecmp($target, 'UTF-8') === 0) {
+            return preg_match('//u', $this->value) === 1;
+        }
+
+        return true;
+    }
+
+    public function isAscii(): bool
+    {
+        if ($this->value === '') {
+            return true;
+        }
+
+        if (function_exists('mb_check_encoding')) {
+            return @mb_check_encoding($this->value, 'ASCII');
+        }
+
+        return preg_match('/^[\x00-\x7F]*$/', $this->value) === 1;
+    }
+
+    public function isUtf8(): bool
+    {
+        if ($this->value === '') {
+            return true;
+        }
+
+        if (function_exists('mb_check_encoding')) {
+            return @mb_check_encoding($this->value, 'UTF-8');
+        }
+
+        return preg_match('//u', $this->value) === 1;
+    }
+
+    public function toUtf8(?string $from_encoding = null): self
+    {
+        $source = $from_encoding !== null
+            ? self::normalizeEncoding($from_encoding)
+            : ($this->detectEncoding([$this->encoding, 'UTF-8', 'ISO-8859-1', 'ASCII']) ?: $this->encoding);
+
+        $converted = self::convertEncoding($this->value, 'UTF-8', $source);
+
+        return new self($converted, $this->mode, 'UTF-8');
+    }
+
+    public function toAscii(?string $from_encoding = null): self
+    {
+        $source = $from_encoding !== null
+            ? self::normalizeEncoding($from_encoding)
+            : ($this->detectEncoding([$this->encoding, 'UTF-8', 'ISO-8859-1', 'ASCII']) ?: $this->encoding);
+
+        $converted = self::convertEncoding($this->value, 'ASCII//TRANSLIT', $source);
+
+        return new self($converted, $this->mode, 'ASCII');
+    }
+
+    public function base64Encode(): self
+    {
+        return new self(base64_encode($this->value), $this->mode, $this->encoding);
+    }
+
+    public function base64Decode(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $normalized = preg_replace('/\s+/', '', $this->value);
+        if ($normalized === null) {
+            $normalized = $this->value;
+        }
+
+        $decoded = base64_decode($normalized, true);
+        if ($decoded === false) {
+            throw new InvalidArgumentException('The string is not valid Base64 encoded data.');
+        }
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function md5(bool $raw_output = false): self
+    {
+        return new self(md5($this->value, $raw_output), $this->mode, $this->encoding);
+    }
+
+    public function crc32(bool $raw_output = false): self
+    {
+        return new self(hash('crc32b', $this->value, $raw_output), $this->mode, $this->encoding);
+    }
+
+    public function sha1(bool $raw_output = false): self
+    {
+        return new self(sha1($this->value, $raw_output), $this->mode, $this->encoding);
+    }
+
+    public function sha256(bool $raw_output = false): self
+    {
+        return new self(hash('sha256', $this->value, $raw_output), $this->mode, $this->encoding);
     }
 
     public function toUpper(): self
@@ -3115,6 +3418,31 @@ final class XString implements Stringable
         }
     }
 
+    /**
+     * @param array<int, int>|int|null $flags
+     */
+    private static function normalizeMatchAllFlags(array|int|null $flags): int
+    {
+        if (is_int($flags)) {
+            return $flags === 0 ? PREG_PATTERN_ORDER : $flags;
+        }
+
+        if ($flags === null) {
+            return PREG_PATTERN_ORDER;
+        }
+
+        $normalized = 0;
+        foreach ($flags as $flag) {
+            if (!is_int($flag)) {
+                throw new InvalidArgumentException('Flags array must contain integers.');
+            }
+
+            $normalized |= $flag;
+        }
+
+        return $normalized === 0 ? PREG_PATTERN_ORDER : $normalized;
+    }
+
     private static function replaceLinesStartingWith(
         string $subject,
         Newline $newline,
@@ -3722,6 +4050,48 @@ final class XString implements Stringable
         }
 
         return $normalized;
+    }
+
+    private static function convertEncoding(string $value, string $toEncoding, string $fromEncoding): string
+    {
+        if (function_exists('mb_convert_encoding')) {
+            try {
+                $converted = mb_convert_encoding($value, $toEncoding, $fromEncoding);
+            } catch (ValueError) {
+                $converted = false;
+            }
+
+            if (is_string($converted)) {
+                return $converted;
+            }
+        }
+
+        if (function_exists('iconv')) {
+            $converted = @iconv($fromEncoding, $toEncoding, $value);
+            if ($converted !== false) {
+                return $converted;
+            }
+        }
+
+        throw new RuntimeException(sprintf('Unable to convert string encoding from %s to %s.', $fromEncoding, $toEncoding));
+    }
+
+    private static function baseEncoding(string $encoding): string
+    {
+        $normalized = trim($encoding);
+        if ($normalized === '') {
+            return $encoding;
+        }
+
+        $delimiter = strpos($normalized, '//');
+        if ($delimiter === false) {
+            return $normalized;
+        }
+
+        $base = substr($normalized, 0, $delimiter);
+        $base = trim((string) $base);
+
+        return $base === '' ? $normalized : $base;
     }
 
     private static function normalizeEncoding(string $encoding): string

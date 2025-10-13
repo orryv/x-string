@@ -12,15 +12,31 @@ use ValueError;
 
 final class MatchTest extends TestCase
 {
-    public function testMatchBasic(): void
+    public function testMatchFirstTicket(): void
     {
         $message = XString::new('Tickets #4321 resolved, #99 reopened');
-        $matches = $message->match(Regex::new('/#(?P<id>\d+)/'));
-        self::assertCount(2, $matches);
-        self::assertSame('#4321', $matches[0][0]);
-        self::assertSame('4321', $matches[0]['id']);
-        self::assertSame('#99', $matches[1][0]);
-        self::assertSame('99', $matches[1]['id']);
+        $match = $message->match(Regex::new('/#\d+/'));
+        self::assertInstanceOf(XString::class, $match);
+        self::assertSame('#4321', (string) $match);
+    }
+
+    public function testMatchOffset(): void
+    {
+        $value = XString::new('ID: #12, ID: #45');
+        $match = $value->match(Regex::new('/#\d+/'), offset: 7);
+        self::assertSame('#45', (string) $match);
+    }
+
+    public function testMatchLowestPosition(): void
+    {
+        $value = XString::new('Release v2.5.0-beta');
+        $patterns = [
+            Regex::new('/beta/'),
+            Regex::new('/v\d+/'),
+            Regex::new('/\.\d/'),
+        ];
+        $match = $value->match($patterns);
+        self::assertSame('v2', (string) $match);
     }
 
     public function testMatchNoResult(): void
@@ -29,21 +45,11 @@ final class MatchTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testMatchMultiplePatterns(): void
+    public function testMatchNegativeOffset(): void
     {
-        $value = XString::new('v2.5.0-beta.3');
-        $patterns = [
-            Regex::new('/^v(?P<major>\d+)/'),
-            Regex::new('/\.(?P<section>\d+)/'),
-        ];
-        $matches = $value->match($patterns);
-        self::assertCount(4, $matches);
-        self::assertSame('2', $matches[0]['major']);
-        self::assertSame('.5', $matches[1][0]);
-        self::assertSame('5', $matches[1]['section']);
-        self::assertSame('.0', $matches[2][0]);
-        self::assertSame('.3', $matches[3][0]);
-        self::assertSame('3', $matches[3]['section']);
+        $value = XString::new('content');
+        $this->expectException(InvalidArgumentException::class);
+        $value->match(Regex::new('/./'), offset: -1);
     }
 
     public function testMatchEmptyArray(): void
@@ -71,8 +77,10 @@ final class MatchTest extends TestCase
     public function testMatchImmutable(): void
     {
         $value = XString::new('Order #77 processed');
-        $value->match(Regex::new('/#(\d+)/'));
+        $match = $value->match(Regex::new('/#(\d+)/'));
         self::assertSame('Order #77 processed', (string) $value);
+        self::assertNotSame($value, $match);
+        self::assertSame('#77', (string) $match);
     }
 
 }
