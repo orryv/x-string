@@ -279,10 +279,10 @@ Used to tell search arguments in other methods that you want to search for a reg
 <!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
-| [`XStringType::newline()`](docs/x-string-type/methods/newline.md) | 1.0 | `public static function newline(null\|string $newline = null): Newline`<br>Create a new Newline instance. Default newline is *any*. |
-| [`XStringType::regex()`](docs/x-string-type/methods/regex.md) | 1.0 | `public static function regex(string $pattern, int $modifiers = 0): Regex`<br>Create a new Regex instance. $modifiers is a bitmask of regex modifiers (ex. Pattern::MODIFIER_CASE_INSENSITIVE). |
-| [`XStringType::htmlTag()`](docs/x-string-type/methods/htmlTag.md) | 1.0 | `public static function htmlTag(string $tag_name, bool $self_closing = false, bool $case_sensitive = false): HtmlTag`<br>Create a new HtmlTag instance. |
-| [`XStringType::htmlCloseTag()`](docs/x-string-type/methods/htmlCloseTag.md) | 1.0 | `public static function htmlCloseTag(string $tag_name, bool $case_sensitive = false): HtmlTag`<br>Create a new HtmlTag instance that matches a closing tag. |
+| [`newline`](docs/x-string-type/methods/newline.md) | 1.0 | `public static function newline(null\|string $newline = null): Newline`<br>Create a new `Newline` instance via `XStringType::newline()`. |
+| [`regex`](docs/x-string-type/methods/regex.md) | 1.0 | `public static function regex(string $pattern, int $modifiers = 0): Regex`<br>Create a new `Regex` instance via `XStringType::regex()`. $modifiers is a bitmask of regex modifiers (ex. Pattern::MODIFIER_CASE_INSENSITIVE). |
+| [`htmlTag`](docs/x-string-type/methods/htmlTag.md) | 1.0 | `public static function htmlTag(string $tag_name, bool $self_closing = false, bool $case_sensitive = false): HtmlTag`<br>Create a new `HtmlTag` instance via `XStringType::htmlTag()`. |
+| [`htmlCloseTag`](docs/x-string-type/methods/htmlCloseTag.md) | 1.0 | `public static function htmlCloseTag(string $tag_name, bool $case_sensitive = false): HtmlTag`<br>Create a new `HtmlTag` instance that matches a closing tag via `XStringType::htmlCloseTag()`. |
 
 
 
