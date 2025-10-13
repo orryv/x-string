@@ -71,6 +71,16 @@ final class XString implements Stringable
         'Ÿ' => 'Y',
         'ÿ' => 'y',
     ];
+    private const ENCRYPTION_VERSION = 1;
+    /** @var array<string, int> */
+    private const ENCRYPTION_ALGORITHM_IDS = [
+        'sodium_xchacha20' => 1,
+        'aes-256-gcm' => 2,
+    ];
+    private const ENCRYPTION_HEADER_LENGTH = 5;
+    private const ENCRYPTION_SALT_BYTES = 16;
+    private const ENCRYPTION_KEY_BYTES = 32;
+    private const PBKDF2_ITERATIONS = 150000;
 
     private string $value;
     private string $mode;
@@ -2264,6 +2274,352 @@ final class XString implements Stringable
     public function sha256(bool $raw_output = false): self
     {
         return new self(hash('sha256', $this->value, $raw_output), $this->mode, $this->encoding);
+    }
+
+    public function crypt(string $salt): self
+    {
+        if ($salt === '') {
+            throw new InvalidArgumentException('Salt must be provided for crypt().');
+        }
+
+        $hash = @crypt($this->value, $salt);
+        if ($hash === false || $hash === '' || $hash === '*0' || $hash === '*1') {
+            throw new RuntimeException('Unable to generate hash using crypt().');
+        }
+
+        return new self($hash, $this->mode, $this->encoding);
+    }
+
+    public function passwordHash(int|string $algo = PASSWORD_BCRYPT, array $options = []): self
+    {
+        $hash = password_hash($this->value, $algo, $options);
+        if ($hash === false) {
+            throw new RuntimeException('password_hash() failed to generate a hash.');
+        }
+
+        return new self($hash, $this->mode, $this->encoding);
+    }
+
+    public function passwordVerify(string $hash): bool
+    {
+        return password_verify($this->value, $hash);
+    }
+
+    public function encrypt(string $password, string $cipher = 'sodium_xchacha20'): self
+    {
+        $algorithm = $this->resolveEncryptionAlgorithm($cipher);
+        $salt = random_bytes(self::ENCRYPTION_SALT_BYTES);
+
+        if ($algorithm === 'sodium_xchacha20' && self::sodiumAeadAvailable()) {
+            $nonceLength = self::sodiumNonceLength();
+            $tagLength = self::sodiumTagLength();
+            $nonce = random_bytes($nonceLength);
+            $aad = pack('CC', self::ENCRYPTION_VERSION, self::ENCRYPTION_ALGORITHM_IDS[$algorithm]);
+            $key = $this->deriveKey($password, $salt, true);
+
+            $ciphertextWithTag = sodium_crypto_aead_xchacha20poly1305_ietf_encrypt(
+                $this->value,
+                $aad,
+                $nonce,
+                $key
+            );
+
+            $tag = substr($ciphertextWithTag, -$tagLength);
+            $ciphertext = substr($ciphertextWithTag, 0, -$tagLength);
+        } else {
+            $algorithm = 'aes-256-gcm';
+            $nonceLength = self::opensslNonceLength($algorithm);
+            $nonce = random_bytes($nonceLength);
+            $aad = pack('CC', self::ENCRYPTION_VERSION, self::ENCRYPTION_ALGORITHM_IDS[$algorithm]);
+            $key = $this->deriveKey($password, $salt, self::sodiumPwhashAvailable());
+
+            $tag = '';
+            $ciphertext = openssl_encrypt(
+                $this->value,
+                $algorithm,
+                $key,
+                OPENSSL_RAW_DATA,
+                $nonce,
+                $tag,
+                $aad
+            );
+
+            if ($ciphertext === false) {
+                if (function_exists('sodium_memzero')) {
+                    sodium_memzero($key);
+                }
+
+                throw new RuntimeException('Encryption failed using AES-256-GCM.');
+            }
+
+            $tagLength = strlen($tag);
+        }
+
+        $header = pack(
+            'CCCCC',
+            self::ENCRYPTION_VERSION,
+            self::ENCRYPTION_ALGORITHM_IDS[$algorithm],
+            strlen($salt),
+            $nonceLength,
+            $tagLength
+        );
+
+        $envelope = $header . $salt . $nonce . $tag . $ciphertext;
+
+        if (function_exists('sodium_memzero')) {
+            sodium_memzero($key);
+        }
+
+        return new self(base64_encode($envelope), $this->mode, $this->encoding);
+    }
+
+    public function decrypt(string $password, string $cipher = 'sodium_xchacha20'): self
+    {
+        $this->validateCipherName($cipher);
+
+        $binary = base64_decode($this->value, true);
+        if ($binary === false) {
+            throw new InvalidArgumentException('Encrypted payload is not valid Base64 data.');
+        }
+
+        if (strlen($binary) < self::ENCRYPTION_HEADER_LENGTH) {
+            throw new InvalidArgumentException('Encrypted payload is malformed.');
+        }
+
+        $header = unpack('Cversion/Calgo/CsaltLen/CnonceLen/CtagLen', substr($binary, 0, self::ENCRYPTION_HEADER_LENGTH));
+        if (!is_array($header)) {
+            throw new InvalidArgumentException('Unable to parse encrypted payload header.');
+        }
+
+        if ($header['version'] !== self::ENCRYPTION_VERSION) {
+            throw new RuntimeException('Unsupported encryption envelope version.');
+        }
+
+        $algorithm = $this->algorithmFromId($header['algo']);
+
+        $offset = self::ENCRYPTION_HEADER_LENGTH;
+        $salt = substr($binary, $offset, $header['saltLen']);
+        $offset += $header['saltLen'];
+        $nonce = substr($binary, $offset, $header['nonceLen']);
+        $offset += $header['nonceLen'];
+        $tag = substr($binary, $offset, $header['tagLen']);
+        $offset += $header['tagLen'];
+        $ciphertext = substr($binary, $offset);
+
+        if (strlen($salt) !== $header['saltLen'] || strlen($nonce) !== $header['nonceLen'] || strlen($tag) !== $header['tagLen']) {
+            throw new InvalidArgumentException('Encrypted payload lengths are inconsistent.');
+        }
+
+        $aad = pack('CC', self::ENCRYPTION_VERSION, self::ENCRYPTION_ALGORITHM_IDS[$algorithm]);
+        $key = $this->deriveKey($password, $salt, $algorithm === 'sodium_xchacha20');
+
+        if ($algorithm === 'sodium_xchacha20') {
+            if (!self::sodiumAeadAvailable()) {
+                if (function_exists('sodium_memzero')) {
+                    sodium_memzero($key);
+                }
+
+            throw new RuntimeException('libsodium support is required to decrypt sodium_xchacha20 payloads.');
+            }
+
+            $plaintext = sodium_crypto_aead_xchacha20poly1305_ietf_decrypt(
+                $ciphertext . $tag,
+                $aad,
+                $nonce,
+                $key
+            );
+
+            if ($plaintext === false) {
+                if (function_exists('sodium_memzero')) {
+                    sodium_memzero($key);
+                }
+
+                throw new RuntimeException('Decryption failed: authentication tag mismatch or corrupted data.');
+            }
+        } else {
+            if (!self::opensslAvailable()) {
+                if (function_exists('sodium_memzero')) {
+                    sodium_memzero($key);
+                }
+
+                throw new RuntimeException('AES-256-GCM support via OpenSSL was not detected.');
+            }
+
+            $plaintext = openssl_decrypt(
+                $ciphertext,
+                'aes-256-gcm',
+                $key,
+                OPENSSL_RAW_DATA,
+                $nonce,
+                $tag,
+                $aad
+            );
+
+            if ($plaintext === false) {
+                if (function_exists('sodium_memzero')) {
+                    sodium_memzero($key);
+                }
+
+                throw new RuntimeException('Decryption failed: authentication tag mismatch or corrupted data.');
+            }
+        }
+
+        if (function_exists('sodium_memzero')) {
+            sodium_memzero($key);
+        }
+
+        return new self($plaintext, $this->mode, $this->encoding);
+    }
+
+    public function htmlEscape(int $flags = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, string $encoding = 'UTF-8'): self
+    {
+        $error = null;
+        set_error_handler(static function (int $severity, string $message) use (&$error): bool {
+            if (($severity & (E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE)) !== 0) {
+                $error = new ValueError($message);
+
+                return true;
+            }
+
+            return false;
+        });
+
+        try {
+            $escaped = htmlspecialchars($this->value, $flags, $encoding, false);
+        } finally {
+            restore_error_handler();
+        }
+
+        if ($error instanceof ValueError) {
+            throw $error;
+        }
+
+        return new self($escaped, $this->mode, $encoding);
+    }
+
+    private function resolveEncryptionAlgorithm(string $cipher): string
+    {
+        $this->validateCipherName($cipher);
+        $normalized = strtolower($cipher);
+
+        if ($normalized === 'sodium_xchacha20') {
+            if (self::sodiumAeadAvailable()) {
+                return 'sodium_xchacha20';
+            }
+
+            if (!self::opensslAvailable()) {
+                throw new RuntimeException('libsodium is unavailable and AES-256-GCM support was not detected.');
+            }
+
+            return 'aes-256-gcm';
+        }
+
+        if (!self::opensslAvailable()) {
+            throw new RuntimeException('AES-256-GCM support via OpenSSL was not detected.');
+        }
+
+        return 'aes-256-gcm';
+    }
+
+    private function validateCipherName(string $cipher): void
+    {
+        $normalized = strtolower($cipher);
+        if (!isset(self::ENCRYPTION_ALGORITHM_IDS[$normalized])) {
+            throw new InvalidArgumentException(sprintf('Unsupported cipher "%s".', $cipher));
+        }
+    }
+
+    private function algorithmFromId(int $id): string
+    {
+        $algorithm = array_search($id, self::ENCRYPTION_ALGORITHM_IDS, true);
+        if ($algorithm === false) {
+            throw new RuntimeException('Unsupported encryption algorithm identifier in payload.');
+        }
+
+        return $algorithm;
+    }
+
+    private static function sodiumAeadAvailable(): bool
+    {
+        return function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')
+            && function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_decrypt');
+    }
+
+    private static function sodiumPwhashAvailable(): bool
+    {
+        return function_exists('sodium_crypto_pwhash');
+    }
+
+    private static function sodiumNonceLength(): int
+    {
+        return (int) (defined('SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES')
+            ? constant('SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_NPUBBYTES')
+            : 24);
+    }
+
+    private static function sodiumTagLength(): int
+    {
+        return (int) (defined('SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_ABYTES')
+            ? constant('SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_ABYTES')
+            : 16);
+    }
+
+    private static function opensslAvailable(): bool
+    {
+        if (!function_exists('openssl_encrypt') || !function_exists('openssl_decrypt')) {
+            return false;
+        }
+
+        $methods = openssl_get_cipher_methods();
+        if (!is_array($methods)) {
+            return false;
+        }
+
+        $methods = array_map('strtolower', $methods);
+
+        return in_array('aes-256-gcm', $methods, true);
+    }
+
+    private static function opensslNonceLength(string $cipher): int
+    {
+        if (!self::opensslAvailable()) {
+            throw new RuntimeException('AES-256-GCM support via OpenSSL was not detected.');
+        }
+
+        $length = openssl_cipher_iv_length($cipher);
+        if (!is_int($length) || $length <= 0) {
+            throw new RuntimeException(sprintf('Unable to determine IV length for cipher "%s".', $cipher));
+        }
+
+        return $length;
+    }
+
+    private function deriveKey(string $password, string $salt, bool $preferSodium): string
+    {
+        if ($preferSodium && self::sodiumPwhashAvailable()) {
+            $opslimit = defined('SODIUM_CRYPTO_PWHASH_OPSLIMIT_MODERATE')
+                ? (int) constant('SODIUM_CRYPTO_PWHASH_OPSLIMIT_MODERATE')
+                : 4;
+            $memlimit = defined('SODIUM_CRYPTO_PWHASH_MEMLIMIT_MODERATE')
+                ? (int) constant('SODIUM_CRYPTO_PWHASH_MEMLIMIT_MODERATE')
+                : 1 << 25;
+            $algorithm = defined('SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13')
+                ? (int) constant('SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13')
+                : (defined('SODIUM_CRYPTO_PWHASH_ALG_DEFAULT')
+                    ? (int) constant('SODIUM_CRYPTO_PWHASH_ALG_DEFAULT')
+                    : 2);
+
+            return sodium_crypto_pwhash(
+                self::ENCRYPTION_KEY_BYTES,
+                $password,
+                $salt,
+                $opslimit,
+                $memlimit,
+                $algorithm
+            );
+        }
+
+        return hash_pbkdf2('sha256', $password, $salt, self::PBKDF2_ITERATIONS, self::ENCRYPTION_KEY_BYTES, true);
     }
 
     public function toUpper(): self
