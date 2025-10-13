@@ -40,6 +40,36 @@ final class XString implements Stringable
         'þ' => 'th',
         'Ŋ' => 'N',
         'ŋ' => 'n',
+        'Ð' => 'D',
+        'ð' => 'd',
+        'Ç' => 'C',
+        'ç' => 'c',
+        'Ć' => 'C',
+        'ć' => 'c',
+        'Č' => 'C',
+        'č' => 'c',
+        'Ś' => 'S',
+        'ś' => 's',
+        'Ş' => 'S',
+        'ş' => 's',
+        'Š' => 'S',
+        'š' => 's',
+        'Ž' => 'Z',
+        'ž' => 'z',
+        'Ź' => 'Z',
+        'ź' => 'z',
+        'Ż' => 'Z',
+        'ż' => 'z',
+        'Ŕ' => 'R',
+        'ŕ' => 'r',
+        'Ŵ' => 'W',
+        'ŵ' => 'w',
+        'Ŷ' => 'Y',
+        'ŷ' => 'y',
+        'Ý' => 'Y',
+        'ý' => 'y',
+        'Ÿ' => 'Y',
+        'ÿ' => 'y',
     ];
 
     private string $value;
@@ -2019,6 +2049,10 @@ final class XString implements Stringable
                     throw new RuntimeException(sprintf('Unable to transliterate string using "%s".', $target));
                 }
 
+                if (stripos($target, 'TRANSLIT') !== false) {
+                    $transliterated = self::stripDetachedAccentMarkers($transliterated);
+                }
+
                 if (self::baseEncoding($target) === 'ASCII') {
                     $transliterated = self::applyAsciiTransliterationFallback(
                         $transliterated,
@@ -2046,6 +2080,10 @@ final class XString implements Stringable
             throw new RuntimeException(sprintf('Unable to transliterate string from %s to %s.', $this->encoding, $target));
         }
 
+        if (stripos($target, 'TRANSLIT') !== false) {
+            $converted = self::stripDetachedAccentMarkers($converted);
+        }
+
         if (self::baseEncoding($target) === 'ASCII') {
             $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $this->encoding);
         }
@@ -2064,6 +2102,10 @@ final class XString implements Stringable
                 ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, $normalized_target, $normalized_source);
+
+        if (stripos($normalized_target, 'TRANSLIT') !== false) {
+            $converted = self::stripDetachedAccentMarkers($converted);
+        }
 
         if ($target_base === 'ASCII') {
             $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $normalized_source);
@@ -2174,6 +2216,7 @@ final class XString implements Stringable
             : ($this->detectEncoding([$this->encoding, 'UTF-8', 'ISO-8859-1', 'ASCII']) ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, 'ASCII//TRANSLIT', $source);
+        $converted = self::stripDetachedAccentMarkers($converted);
         $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $source);
 
         return new self($converted, $this->mode, 'ASCII');
@@ -4015,11 +4058,16 @@ final class XString implements Stringable
 
     private static function applyAsciiTransliterationFallback(string $value, string $originalValue, string $encoding): string
     {
+        $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
+
         if (!self::shouldApplyAsciiFallback($value, $originalValue)) {
+            if ($fallback !== '' && $fallback !== $value) {
+                return $fallback;
+            }
+
             return $value;
         }
 
-        $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
         $candidate = $fallback !== '' ? $fallback : $value;
 
         if (preg_match('/[^\x00-\x7F]/u', $candidate) === 1) {
@@ -4068,6 +4116,16 @@ final class XString implements Stringable
             $utf8 = $value;
         }
 
+        if (class_exists('\Transliterator')) {
+            $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII');
+            if ($transliterator instanceof \Transliterator) {
+                $transliterated = $transliterator->transliterate($utf8);
+                if (is_string($transliterated) && $transliterated !== '') {
+                    $utf8 = $transliterated;
+                }
+            }
+        }
+
         if (class_exists('Normalizer')) {
             $normalized = Normalizer::normalize($utf8, Normalizer::FORM_KD);
             if (is_string($normalized) && $normalized !== '') {
@@ -4080,6 +4138,7 @@ final class XString implements Stringable
             $utf8 = $stripped;
         }
 
+        $utf8 = self::stripDetachedAccentMarkers($utf8);
         $utf8 = strtr($utf8, self::ASCII_FALLBACK_REPLACEMENTS);
 
         $entities = htmlentities($utf8, ENT_NOQUOTES, 'UTF-8');
@@ -4102,6 +4161,36 @@ final class XString implements Stringable
         }
 
         return $utf8;
+    }
+
+    private static function stripDetachedAccentMarkers(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $patterns = [
+            "/([A-Za-z])\xC2\xB4/",
+            "/([A-Za-z])\xB4/",
+            "/([A-Za-z])\xC2\xA8/",
+            "/([A-Za-z])\xA8/",
+            "/([A-Za-z])\xCB\x86/",
+            "/([A-Za-z])\xCB\x98/",
+            "/([A-Za-z])\xCB\x9A/",
+            "/([A-Za-z])\xCB\x9B/",
+            "/([A-Za-z])\xCB\x9C/",
+            "/([A-Za-z])\xCB\x9D/",
+        ];
+
+        $cleaned = $value;
+        foreach ($patterns as $pattern) {
+            $replaced = preg_replace($pattern, '$1', $cleaned);
+            if (is_string($replaced) && $replaced !== '') {
+                $cleaned = $replaced;
+            }
+        }
+
+        return $cleaned;
     }
 
     private static function uppercaseFirst(string $value, string $encoding): string
