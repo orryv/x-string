@@ -142,7 +142,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`toCamel`](docs/x-string/methods/toCamel.md) | 1.0 | `public function toCamel(bool $capitalize_first = false): self`<br>Convert the string to camelCase. If $capitalize_first is true, it converts to PascalCase (first letter capitalized). |
 | [`toTitle`](docs/x-string/methods/toTitle.md) | 1.0 | `public function toTitle(): self`<br>Convert the string to Title Case (first letter of each word capitalized). |
 | [`toPascal`](docs/x-string/methods/toPascal.md) | 1.0 | `public function toPascal(): self`<br>Convert the string to PascalCase (first letter capitalized, no spaces). |
-| [`match`](docs/x-string/methods/match.md) | 1.0 | `public function match(Regex\|array<Regex> $pattern): null \| array`<br>Match the string against one or more regex patterns. Returns an array containing every match (with captures) or null if none are found. |
+| [`match`](docs/x-string/methods/match.md) | 1.0 | `public function match(Regex\|array<Regex> $pattern, int $offset = 0): null \| XString`<br>Match the string against one or more regex patterns starting at an optional offset. Returns the earliest matched substring as a new `XString`, or null if none are found. |
 
 ### Strip / Remove
 
@@ -203,7 +203,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`transliterate`](docs/x-string/methods/transliterate.md) | 1.0 | `public function transliterate(string $to = 'ASCII//TRANSLIT'): self`<br>Transliterate the string to a different character set. Default is 'ASCII//TRANSLIT'. |
 | [`toEncoding`](docs/x-string/methods/toEncoding.md) | 1.0 | `public function toEncoding(string $to_encoding, null\|string $from_encoding = null): self`<br>Convert the string to a different encoding. If $from_encoding is not provided, it tries to detect the current encoding. |
 | [`detectEncoding`](docs/x-string/methods/detectEncoding.md) | 1.0 | `public function detectEncoding(array $encodings = ['UTF-8', 'ISO-8859-1', 'ASCII']): string\|false`<br>Detect the encoding of the string from a list of possible encodings. Returns the detected encoding or false if none matched. |
-| [`isValidEncoding`](docs/x-string/methods/is-validEncoding.md) | 1.0 | `public function isValidEncoding(null\|string $encoding = null): bool`<br>Check if the string is valid in the specified encoding. If $encoding is not provided, it uses the current encoding of the string. |
+| [`isValidEncoding`](docs/x-string/methods/isValidEncoding.md) | 1.0 | `public function isValidEncoding(null\|string $encoding = null): bool`<br>Check if the string is valid in the specified encoding. If $encoding is not provided, it uses the current encoding of the string. |
 | [`isAscii`](docs/x-string/methods/isAscii.md) | 1.0 | `public function isAscii(): bool`<br>Check if the string contains only ASCII characters. |
 | [`isUtf8`](docs/x-string/methods/isUtf8.md) | 1.0 | `public function isUtf8(): bool`<br>Check if the string is valid UTF-8. |
 | [`toUtf8`](docs/x-string/methods/toUtf8.md) | 1.0 | `public function toUtf8(nul \|string $from_encoding = null): self`<br>Convert the string to UTF-8 encoding. If $from_encoding is not provided, it tries to detect the current encoding. |
@@ -217,6 +217,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`base64Encode`](docs/x-string/methods/base64Encode.md) | 1.0 | `public function base64Encode(): self`<br>Base64-encode the string. |
 | [`base64Decode`](docs/x-string/methods/base64Decode.md) | 1.0 | `public function base64Decode(): self`<br>Base64-decode the string. |
 | [`md5`](docs/x-string/methods/md5.md) | 1.0 | `public function md5(bool $raw_output = false): self`<br>Get the MD5 hash of the string. If $raw_output is true, it returns the raw binary format. |
+| [`crc32`](docs/x-string/methods/crc32.md) | 1.0 | `public function crc32(bool $raw_output = false): self`<br>Get the CRC32B checksum of the string. If $raw_output is true, it returns the raw binary format. |
 | [`sha1`](docs/x-string/methods/sha1.md) | 1.0 | `public function sha1(bool $raw_output = false): self`<br>Get the SHA-1 hash of the string. If $raw_output is true, it returns the raw binary format. |
 | [`sha256`](docs/x-string/methods/sha256.md) | 1.0 | `public function sha256(bool $raw_output = false): self`<br>Get the SHA-256 hash of the string. If $raw_output is true, it returns the raw binary format. |
 | [`crypt`](docs/x-string/methods/crypt.md) | 1.0 | `public function crypt(string $salt): self`<br>Hash the string using the crypt() function with the specified salt. |
