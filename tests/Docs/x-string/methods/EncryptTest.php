@@ -18,23 +18,22 @@ final class EncryptTest extends TestCase
         self::assertSame('Sensitive payload', (string) $decrypted);
     }
 
-    public function testEncryptDefaultFallback(): void
+    public function testEncryptDefaultRequiresLibsodium(): void
     {
+        if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
+            self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
+        }
         $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
         $binary = base64_decode((string) $ciphertext, true);
         self::assertIsString($binary);
-        self::assertSame(2, ord($binary[1])); // algorithm id 2 => AES-256-GCM
-    }
-
-    public function testEncryptSodiumDegrades(): void
-    {
-        $ciphertext = XString::new('libsodium missing?')->encrypt('secret', 'sodium_xchacha20');
-        $binary = base64_decode((string) $ciphertext, true);
-        self::assertSame(2, ord($binary[1]));
+        self::assertSame(1, ord($binary[1]));
     }
 
     public function testEncryptImmutability(): void
     {
+        if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
+            self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
+        }
         $plaintext = XString::new('unchanged');
         $plaintext->encrypt('password');
         self::assertSame('unchanged', (string) $plaintext);

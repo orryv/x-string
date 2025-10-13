@@ -36,6 +36,7 @@ Decrypts an envelope created by `encrypt()`. The method validates the version an
 ## Important notes and considerations
 
 - **Cipher auto-detection.** The algorithm identifier embedded in the envelope determines which backend is used.
+- **libsodium required for sodium payloads.** Payloads encrypted with `sodium_xchacha20` require the `sodium` extension to decrypt; ensure it's installed everywhere the ciphertext is processed.
 - **Authentication enforced.** Modified ciphertexts will fail to decrypt.
 - **Immutable API.** The ciphertext `XString` remains unchanged; a new instance with the plaintext is returned.
 
