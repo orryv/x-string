@@ -2412,7 +2412,9 @@ final class XString implements Stringable
         }
 
         $aad = pack('CC', self::ENCRYPTION_VERSION, self::ENCRYPTION_ALGORITHM_IDS[$algorithm]);
-        $key = $this->deriveKey($password, $salt, $algorithm === 'sodium_xchacha20');
+        $deriveWithSodium = $algorithm === 'sodium_xchacha20'
+            || self::sodiumPwhashAvailable();
+        $key = $this->deriveKey($password, $salt, $deriveWithSodium);
 
         if ($algorithm === 'sodium_xchacha20') {
             if (!self::sodiumAeadAvailable()) {
