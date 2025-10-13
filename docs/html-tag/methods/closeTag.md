@@ -12,6 +12,8 @@
   - [Examples](#examples)
     - [Create a matching closing tag](#create-a-matching-closing-tag)
     - [Preserve custom casing](#preserve-custom-casing)
+    - [Use closing tags with XString searches](#use-closing-tags-with-xstring-searches)
+    - [Invalid tag names throw exceptions](#invalid-tag-names-throw-exceptions)
   - [One-line API table entry](#one-line-api-table-entry)
 
 ## Technical details
@@ -77,6 +79,30 @@ use Orryv\XString\HtmlTag;
 
 $closing = HtmlTag::closeTag('MyComponent', true);
 #Test: self::assertSame('</MyComponent>', (string) $closing);
+```
+
+### Use closing tags with XString searches
+
+<!-- test:html-tag-close-with-xstring -->
+```php
+use Orryv\XString;
+use Orryv\XString\HtmlTag;
+
+$fragment = XString::new('<section><p>Body</p></section>');
+
+#Test: self::assertTrue($fragment->contains(HtmlTag::closeTag('section')));
+#Test: self::assertFalse($fragment->contains(HtmlTag::closeTag('article')));
+```
+
+### Invalid tag names throw exceptions
+
+<!-- test:html-tag-close-invalid -->
+```php
+use InvalidArgumentException;
+use Orryv\XString\HtmlTag;
+
+$this->expectException(InvalidArgumentException::class);
+HtmlTag::closeTag('');
 ```
 
 ## One-line API table entry
