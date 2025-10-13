@@ -22,9 +22,9 @@ final class XStringType
         return Newline::new($newline);
     }
 
-    public static function regex(string $pattern, int $modifiers = 0): Regex
+    public static function regex(string $pattern): Regex
     {
-        return Regex::new($pattern, $modifiers);
+        return Regex::new($pattern);
     }
 
     public static function htmlTag(string $tag_name, bool $self_closing = false, bool $case_sensitive = false): HtmlTag
