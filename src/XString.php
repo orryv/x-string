@@ -1503,11 +1503,12 @@ final class XString implements Stringable
             }
 
             if ($search_value instanceof Newline) {
-                $config = $search_value->getStartsWithConfig();
-                if ($config !== null) {
-                    $result = self::replaceLinesStartingWith(
+                $constraint = $search_value->getLineConstraint();
+                if ($constraint !== null) {
+                    $result = self::replaceLinesMatchingConstraint(
                         $result,
                         $search_value,
+                        $constraint,
                         $replacement,
                         $remaining,
                         $reversed
@@ -3388,16 +3389,15 @@ final class XString implements Stringable
         }
 
         if ($candidate instanceof Newline) {
-            $config = $candidate->getStartsWithConfig();
-            if ($config !== null) {
+            $constraint = $candidate->getLineConstraint();
+            if ($constraint !== null) {
                 if ($this->value === '') {
                     return false;
                 }
 
                 $line = $this->firstLineForNewline($candidate);
-                $comparison = $config['trim'] ? ltrim($line, " \t") : $line;
 
-                return str_starts_with($comparison, $config['prefix']);
+                return self::lineMatchesConstraint($line, $constraint);
             }
 
             foreach ($this->newlineFragments($candidate) as $fragment) {
@@ -3480,6 +3480,13 @@ final class XString implements Stringable
         }
 
         if ($candidate instanceof Newline) {
+            $constraint = $candidate->getLineConstraint();
+            if ($constraint !== null) {
+                $line = $this->lastLineForNewline($candidate);
+
+                return self::lineMatchesConstraint($line, $constraint);
+            }
+
             foreach ($this->newlineFragments($candidate) as $fragment) {
                 if ($fragment !== '' && str_ends_with($this->value, $fragment)) {
                     return true;
@@ -3522,6 +3529,22 @@ final class XString implements Stringable
         }
 
         if ($candidate instanceof Newline) {
+            $constraint = $candidate->getLineConstraint();
+            if ($constraint !== null && $constraint['type'] === 'equals') {
+                $segments = self::splitLines($this->value, $candidate, true);
+                $lines = $segments['lines'];
+
+                if ($segments['has_trailing_break'] && $lines !== [] && $lines[array_key_last($lines)] === '') {
+                    array_pop($lines);
+                }
+
+                if (count($lines) !== 1) {
+                    return false;
+                }
+
+                return self::lineMatchesConstraint($lines[0], $constraint);
+            }
+
             $fragments = $this->newlineFragments($candidate);
             $subject = $this->value;
 
@@ -3736,6 +3759,102 @@ final class XString implements Stringable
         return $line === false ? '' : $line;
     }
 
+    private function lastLineForNewline(Newline $newline): string
+    {
+        if ($this->value === '') {
+            return '';
+        }
+
+        $line_break = (string) $newline;
+        $subject = $this->value;
+
+        if ($line_break === '') {
+            return $subject;
+        }
+
+        $split_break = $line_break;
+        $position = strrpos($subject, $split_break);
+
+        if ($position === false) {
+            $canonical = self::canonicalizeLineBreak($line_break);
+            if ($canonical !== '' && $canonical !== $line_break) {
+                $position = strrpos($subject, $canonical);
+                if ($position !== false) {
+                    $split_break = $canonical;
+                }
+            }
+        }
+
+        if ($position === false) {
+            return $subject;
+        }
+
+        $line = substr($subject, $position + strlen($split_break));
+
+        return $line === false ? '' : $line;
+    }
+
+    /**
+     * @return array{lines: array<int, string>, has_trailing_break: bool, line_break: string, split_break: string}
+     */
+    private static function splitLines(string $subject, Newline $newline, bool $preserve_trailing_blank): array
+    {
+        $line_break = (string) $newline;
+        $split_break = $line_break;
+
+        if ($line_break === '') {
+            return [
+                'lines' => [$subject],
+                'has_trailing_break' => false,
+                'line_break' => $line_break,
+                'split_break' => $split_break,
+            ];
+        }
+
+        if (!str_contains($subject, $split_break)) {
+            $canonical = self::canonicalizeLineBreak($line_break);
+            if ($canonical !== '' && $canonical !== $line_break && str_contains($subject, $canonical)) {
+                $split_break = $canonical;
+            }
+        }
+
+        $segments = $split_break === '' ? [$subject] : explode($split_break, $subject);
+
+        $has_trailing_break = ($split_break !== '' && str_ends_with($subject, $split_break))
+            || ($line_break !== $split_break && $line_break !== '' && str_ends_with($subject, $line_break));
+
+        if (!$preserve_trailing_blank && $has_trailing_break && $segments !== []) {
+            array_pop($segments);
+        }
+
+        return [
+            'lines' => $segments,
+            'has_trailing_break' => $has_trailing_break,
+            'line_break' => $line_break,
+            'split_break' => $split_break,
+        ];
+    }
+
+    /**
+     * @param array{type: 'starts_with'|'ends_with'|'contains'|'equals', needle: string, trim?: bool} $constraint
+     */
+    private static function lineMatchesConstraint(string $line, array $constraint): bool
+    {
+        return match ($constraint['type']) {
+            'starts_with' => str_starts_with(
+                ($constraint['trim'] ?? false) ? ltrim($line, " \t") : $line,
+                $constraint['needle']
+            ),
+            'ends_with' => str_ends_with(
+                ($constraint['trim'] ?? false) ? rtrim($line, " \t") : $line,
+                $constraint['needle']
+            ),
+            'contains' => str_contains($line, $constraint['needle']),
+            'equals' => $line === $constraint['needle'],
+            default => false,
+        };
+    }
+
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string $candidate
      */
@@ -3759,6 +3878,19 @@ final class XString implements Stringable
         }
 
         if ($candidate instanceof Newline) {
+            $constraint = $candidate->getLineConstraint();
+            if ($constraint !== null) {
+                $segments = self::splitLines($this->value, $candidate, true);
+
+                foreach ($segments['lines'] as $line) {
+                    if (self::lineMatchesConstraint($line, $constraint)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             $fragment = (string) $candidate;
             $canonical = self::canonicalizeLineBreak($fragment);
 
@@ -4230,9 +4362,13 @@ final class XString implements Stringable
         return $normalized === 0 ? PREG_PATTERN_ORDER : $normalized;
     }
 
-    private static function replaceLinesStartingWith(
+    /**
+     * @param array{type: 'starts_with'|'ends_with'|'contains'|'equals', needle: string, trim?: bool} $constraint
+     */
+    private static function replaceLinesMatchingConstraint(
         string $subject,
         Newline $newline,
+        array $constraint,
         string $replacement,
         int &$remaining,
         bool $reversed
@@ -4241,57 +4377,40 @@ final class XString implements Stringable
             return $subject;
         }
 
-        $config = $newline->getStartsWithConfig();
-        if ($config === null) {
-            return $subject;
-        }
-
         $line_break = (string) $newline;
         if ($line_break === '') {
             return $subject;
         }
 
-        $prefix = $config['prefix'];
-        $trim = $config['trim'];
+        $segments = self::splitLines($subject, $newline, false);
+        $lines = $segments['lines'];
 
-        $split_break = $line_break;
-        if (!str_contains($subject, $split_break)) {
-            $canonical_break = self::canonicalizeLineBreak($line_break);
-            if ($canonical_break !== '' && str_contains($subject, $canonical_break)) {
-                $split_break = $canonical_break;
-            }
-        }
-
-        $segments = explode($split_break, $subject);
-        $has_trailing_break = ($split_break !== '' && str_ends_with($subject, $split_break))
-            || ($line_break !== $split_break && str_ends_with($subject, $line_break));
-        if ($has_trailing_break) {
-            array_pop($segments);
+        if ($lines === []) {
+            return $subject;
         }
 
         $indexes = $reversed
-            ? array_reverse(array_keys($segments))
-            : array_keys($segments);
+            ? array_reverse(array_keys($lines))
+            : array_keys($lines);
 
         foreach ($indexes as $index) {
             if ($remaining === 0) {
                 break;
             }
 
-            $line = $segments[$index];
-            $comparison = $trim ? ltrim($line, " \t") : $line;
+            $line = $lines[$index];
 
-            if (!str_starts_with($comparison, $prefix)) {
+            if (!self::lineMatchesConstraint($line, $constraint)) {
                 continue;
             }
 
-            $segments[$index] = $replacement;
+            $lines[$index] = $replacement;
             $remaining--;
         }
 
-        $result = implode($line_break, $segments);
+        $result = implode($line_break, $lines);
 
-        if ($has_trailing_break) {
+        if ($segments['has_trailing_break']) {
             $result .= $line_break;
         }
 
