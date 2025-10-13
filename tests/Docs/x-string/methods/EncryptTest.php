@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Orryv\XArray\Tests\Docs\XString\Methods;
 
+use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
-use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 final class EncryptTest extends TestCase
@@ -22,14 +22,14 @@ final class EncryptTest extends TestCase
     public function testEncryptDefaultRequiresLibsodium(): void
     {
         if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-            $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage('libsodium support is required for sodium_xchacha20 encryption.');
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('libsodium support is required for sodium_xchacha20 encryption.');
         }
         $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
         $binary = base64_decode((string) $ciphertext, true);
         self::assertIsString($binary);
         if (function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-            self::assertSame(1, ord($binary[1]));
+        self::assertSame(1, ord($binary[1]));
         }
     }
 

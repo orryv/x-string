@@ -2606,6 +2606,52 @@ final class XString implements Stringable
         return new self($escaped, $this->mode, $encoding);
     }
 
+    public function htmlUnescape(): self
+    {
+        $unescaped = html_entity_decode($this->value, ENT_QUOTES | ENT_HTML5, $this->encoding);
+
+        return new self($unescaped, $this->mode, $this->encoding);
+    }
+
+    public function urlEncode(bool $raw = false): self
+    {
+        $encoded = $raw ? rawurlencode($this->value) : urlencode($this->value);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function urlDecode(bool $raw = false): self
+    {
+        $decoded = $raw ? rawurldecode($this->value) : urldecode($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function nl2br(bool $is_xhtml = true): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $converted = nl2br($this->value, $is_xhtml);
+
+        return new self($converted, $this->mode, $this->encoding);
+    }
+
+    public function br2nl(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $converted = preg_replace('/<br\s*\/?>/i', PHP_EOL, $this->value);
+        if ($converted === null) {
+            $converted = $this->value;
+        }
+
+        return new self($converted, $this->mode, $this->encoding);
+    }
+
     private function resolveEncryptionAlgorithm(string $cipher): string
     {
         $this->validateCipherName($cipher);
