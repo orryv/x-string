@@ -13,7 +13,9 @@ use Orryv\XString\Compute\Similarity;
 use Orryv\XString\Exceptions\EmptyCharacterSetException;
 use Orryv\XString\Exceptions\InvalidLengthException;
 use RuntimeException;
+use SodiumException;
 use Stringable;
+use Throwable;
 use ValueError;
 
 final class XString implements Stringable
@@ -2348,9 +2350,7 @@ final class XString implements Stringable
             );
 
             if ($ciphertext === false) {
-                if (function_exists('sodium_memzero')) {
-                    sodium_memzero($key);
-                }
+                $this->wipeSensitiveValue($key);
 
                 throw new RuntimeException('Encryption failed using AES-256-GCM.');
             }
@@ -2369,9 +2369,7 @@ final class XString implements Stringable
 
         $envelope = $header . $salt . $nonce . $tag . $ciphertext;
 
-        if (function_exists('sodium_memzero')) {
-            sodium_memzero($key);
-        }
+        $this->wipeSensitiveValue($key);
 
         return new self(base64_encode($envelope), $this->mode, $this->encoding);
     }
@@ -2418,9 +2416,7 @@ final class XString implements Stringable
 
         if ($algorithm === 'sodium_xchacha20') {
             if (!self::sodiumAeadAvailable()) {
-                if (function_exists('sodium_memzero')) {
-                    sodium_memzero($key);
-                }
+                $this->wipeSensitiveValue($key);
 
             throw new RuntimeException('libsodium support is required to decrypt sodium_xchacha20 payloads.');
             }
@@ -2433,17 +2429,13 @@ final class XString implements Stringable
             );
 
             if ($plaintext === false) {
-                if (function_exists('sodium_memzero')) {
-                    sodium_memzero($key);
-                }
+                $this->wipeSensitiveValue($key);
 
                 throw new RuntimeException('Decryption failed: authentication tag mismatch or corrupted data.');
             }
         } else {
             if (!self::opensslAvailable()) {
-                if (function_exists('sodium_memzero')) {
-                    sodium_memzero($key);
-                }
+                $this->wipeSensitiveValue($key);
 
                 throw new RuntimeException('AES-256-GCM support via OpenSSL was not detected.');
             }
@@ -2459,17 +2451,13 @@ final class XString implements Stringable
             );
 
             if ($plaintext === false) {
-                if (function_exists('sodium_memzero')) {
-                    sodium_memzero($key);
-                }
+                $this->wipeSensitiveValue($key);
 
                 throw new RuntimeException('Decryption failed: authentication tag mismatch or corrupted data.');
             }
         }
 
-        if (function_exists('sodium_memzero')) {
-            sodium_memzero($key);
-        }
+        $this->wipeSensitiveValue($key);
 
         return new self($plaintext, $this->mode, $this->encoding);
     }
@@ -2608,17 +2596,62 @@ final class XString implements Stringable
                     ? (int) constant('SODIUM_CRYPTO_PWHASH_ALG_DEFAULT')
                     : 2);
 
-            return sodium_crypto_pwhash(
-                self::ENCRYPTION_KEY_BYTES,
-                $password,
-                $salt,
-                $opslimit,
-                $memlimit,
-                $algorithm
-            );
+            try {
+                return sodium_crypto_pwhash(
+                    self::ENCRYPTION_KEY_BYTES,
+                    $password,
+                    $salt,
+                    $opslimit,
+                    $memlimit,
+                    $algorithm
+                );
+            } catch (Throwable $exception) {
+                if (!$this->isSodiumNotImplemented($exception)) {
+                    throw $exception;
+                }
+            }
         }
 
+        return $this->deriveKeyWithPbkdf2($password, $salt);
+    }
+
+    private function deriveKeyWithPbkdf2(string $password, string $salt): string
+    {
         return hash_pbkdf2('sha256', $password, $salt, self::PBKDF2_ITERATIONS, self::ENCRYPTION_KEY_BYTES, true);
+    }
+
+    private function isSodiumNotImplemented(Throwable $exception): bool
+    {
+        if ($exception instanceof SodiumException) {
+            return stripos($exception->getMessage(), 'not implemented') !== false;
+        }
+
+        return false;
+    }
+
+    private function wipeSensitiveValue(string &$value): void
+    {
+        if ($value === '') {
+            return;
+        }
+
+        if (function_exists('sodium_memzero')) {
+            try {
+                sodium_memzero($value);
+
+                return;
+            } catch (Throwable $exception) {
+                if ($this->isSodiumNotImplemented($exception)) {
+                    $value = str_repeat("\0", strlen($value));
+
+                    return;
+                }
+
+                throw $exception;
+            }
+        }
+
+        $value = str_repeat("\0", strlen($value));
     }
 
     public function toUpper(): self

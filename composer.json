@@ -5,6 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.1",
+        "paragonie/sodium_compat": "^2.4",
         "psr/log": "^3.0"
     },
     "autoload": {
