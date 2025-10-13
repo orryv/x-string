@@ -2000,6 +2000,14 @@ final class XString implements Stringable
                     throw new RuntimeException(sprintf('Unable to transliterate string using "%s".', $target));
                 }
 
+                if (self::baseEncoding($target) === 'ASCII') {
+                    $transliterated = self::applyAsciiTransliterationFallback(
+                        $transliterated,
+                        $this->value,
+                        $this->encoding,
+                    );
+                }
+
                 return new self($transliterated, $this->mode, $this->encoding);
             }
 
@@ -2019,6 +2027,10 @@ final class XString implements Stringable
             throw new RuntimeException(sprintf('Unable to transliterate string from %s to %s.', $this->encoding, $target));
         }
 
+        if (self::baseEncoding($target) === 'ASCII') {
+            $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $this->encoding);
+        }
+
         return new self($converted, $this->mode, self::baseEncoding($target));
     }
 
@@ -2033,6 +2045,10 @@ final class XString implements Stringable
                 ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, $normalized_target, $normalized_source);
+
+        if ($target_base === 'ASCII') {
+            $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $normalized_source);
+        }
 
         return new self($converted, $this->mode, $target_base);
     }
@@ -2139,6 +2155,7 @@ final class XString implements Stringable
             : ($this->detectEncoding([$this->encoding, 'UTF-8', 'ISO-8859-1', 'ASCII']) ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, 'ASCII//TRANSLIT', $source);
+        $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $source);
 
         return new self($converted, $this->mode, 'ASCII');
     }
@@ -3972,6 +3989,29 @@ final class XString implements Stringable
             if ($fallback !== '') {
                 $value = $fallback;
             }
+        }
+
+        return $value;
+    }
+
+    private static function applyAsciiTransliterationFallback(string $value, string $originalValue, string $encoding): string
+    {
+        if (!self::shouldApplyAsciiFallback($value, $originalValue)) {
+            return $value;
+        }
+
+        $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
+        $candidate = $fallback !== '' ? $fallback : $value;
+
+        if (preg_match('/[^\x00-\x7F]/u', $candidate) === 1) {
+            $normalized = preg_replace('/[^\x00-\x7F]+/u', '?', $candidate);
+            if (is_string($normalized) && $normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        if ($fallback !== '') {
+            return $fallback;
         }
 
         return $value;
