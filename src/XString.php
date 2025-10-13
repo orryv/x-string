@@ -2310,7 +2310,11 @@ final class XString implements Stringable
         $algorithm = $this->resolveEncryptionAlgorithm($cipher);
         $salt = random_bytes(self::ENCRYPTION_SALT_BYTES);
 
-        if ($algorithm === 'sodium_xchacha20' && self::sodiumAeadAvailable()) {
+        if ($algorithm === 'sodium_xchacha20') {
+            if (!self::sodiumAeadAvailable()) {
+                throw new RuntimeException('libsodium support is required to encrypt using sodium_xchacha20.');
+            }
+
             $nonceLength = self::sodiumNonceLength();
             $tagLength = self::sodiumTagLength();
             $nonce = random_bytes($nonceLength);
@@ -2327,7 +2331,6 @@ final class XString implements Stringable
             $tag = substr($ciphertextWithTag, -$tagLength);
             $ciphertext = substr($ciphertextWithTag, 0, -$tagLength);
         } else {
-            $algorithm = 'aes-256-gcm';
             $nonceLength = self::opensslNonceLength($algorithm);
             $nonce = random_bytes($nonceLength);
             $aad = pack('CC', self::ENCRYPTION_VERSION, self::ENCRYPTION_ALGORITHM_IDS[$algorithm]);
@@ -2503,15 +2506,11 @@ final class XString implements Stringable
         $normalized = strtolower($cipher);
 
         if ($normalized === 'sodium_xchacha20') {
-            if (self::sodiumAeadAvailable()) {
-                return 'sodium_xchacha20';
+            if (!self::sodiumAeadAvailable()) {
+                throw new RuntimeException('libsodium support is required for sodium_xchacha20 encryption.');
             }
 
-            if (!self::opensslAvailable()) {
-                throw new RuntimeException('libsodium is unavailable and AES-256-GCM support was not detected.');
-            }
-
-            return 'aes-256-gcm';
+            return 'sodium_xchacha20';
         }
 
         if (!self::opensslAvailable()) {
