@@ -22,6 +22,55 @@ final class XString implements Stringable
     private const DEFAULT_MODE = 'graphemes';
     /** @var array<int, string> */
     private const VALID_MODES = ['bytes', 'codepoints', 'graphemes'];
+    /** @var array<string, string> */
+    private const ASCII_FALLBACK_REPLACEMENTS = [
+        'ß' => 'ss',
+        'ẞ' => 'SS',
+        'Æ' => 'AE',
+        'æ' => 'ae',
+        'Œ' => 'OE',
+        'œ' => 'oe',
+        'Ø' => 'O',
+        'ø' => 'o',
+        'Đ' => 'D',
+        'đ' => 'd',
+        'Ł' => 'L',
+        'ł' => 'l',
+        'Þ' => 'Th',
+        'þ' => 'th',
+        'Ŋ' => 'N',
+        'ŋ' => 'n',
+        'Ð' => 'D',
+        'ð' => 'd',
+        'Ç' => 'C',
+        'ç' => 'c',
+        'Ć' => 'C',
+        'ć' => 'c',
+        'Č' => 'C',
+        'č' => 'c',
+        'Ś' => 'S',
+        'ś' => 's',
+        'Ş' => 'S',
+        'ş' => 's',
+        'Š' => 'S',
+        'š' => 's',
+        'Ž' => 'Z',
+        'ž' => 'z',
+        'Ź' => 'Z',
+        'ź' => 'z',
+        'Ż' => 'Z',
+        'ż' => 'z',
+        'Ŕ' => 'R',
+        'ŕ' => 'r',
+        'Ŵ' => 'W',
+        'ŵ' => 'w',
+        'Ŷ' => 'Y',
+        'ŷ' => 'y',
+        'Ý' => 'Y',
+        'ý' => 'y',
+        'Ÿ' => 'Y',
+        'ÿ' => 'y',
+    ];
 
     private string $value;
     private string $mode;
@@ -650,38 +699,67 @@ final class XString implements Stringable
         $mask_units = self::splitGraphemes($pattern, $this->encoding);
         $source_units = self::splitByMode($this->value, $this->mode, $this->encoding);
 
-        $result = '';
         $source_count = count($source_units);
+        $result_units = [];
 
         if ($reversed) {
-            $placeholder_count = 0;
+            $source_index = $source_count - 1;
+            $digits_used = 0;
+            $placeholders_remaining = 0;
+
             foreach ($mask_units as $mask_unit) {
                 if ($mask_unit === $placeholder_unit) {
-                    $placeholder_count++;
+                    $placeholders_remaining++;
                 }
             }
 
-            $source_index = max(0, $source_count - $placeholder_count);
+            for ($index = count($mask_units) - 1; $index >= 0; $index--) {
+                $mask_unit = $mask_units[$index];
+
+                if ($mask_unit === $placeholder_unit) {
+                    if ($source_index >= 0) {
+                        $result_units[] = $source_units[$source_index];
+                        $source_index--;
+                        $digits_used++;
+                    }
+
+                    if ($placeholders_remaining > 0) {
+                        $placeholders_remaining--;
+                    }
+
+                    continue;
+                }
+
+                if ($source_index >= 0 || ($digits_used > 0 && $placeholders_remaining === 0)) {
+                    $result_units[] = $mask_unit;
+                }
+            }
+
+            $result_units = array_reverse($result_units);
         } else {
             $source_index = 0;
-        }
+            $digits_used = 0;
 
-        foreach ($mask_units as $mask_unit) {
-            if ($mask_unit === $placeholder_unit) {
-                if ($source_index < $source_count) {
-                    $result .= $source_units[$source_index];
-                    $source_index++;
-                } else {
-                    break;
+            foreach ($mask_units as $mask_unit) {
+                if ($mask_unit === $placeholder_unit) {
+                    if ($source_index < $source_count) {
+                        $result_units[] = $source_units[$source_index];
+                        $source_index++;
+                        $digits_used++;
+                    } else {
+                        break;
+                    }
+
+                    continue;
                 }
 
-                continue;
+                if ($digits_used > 0 || $source_index < $source_count) {
+                    $result_units[] = $mask_unit;
+                }
             }
-
-            $result .= $mask_unit;
         }
 
-        return new self($result, $this->mode, $this->encoding);
+        return new self(implode('', $result_units), $this->mode, $this->encoding);
     }
 
     public function collapseWhitespace(bool $space = true, bool $tab = true, bool $newline = false): self
@@ -1971,6 +2049,18 @@ final class XString implements Stringable
                     throw new RuntimeException(sprintf('Unable to transliterate string using "%s".', $target));
                 }
 
+                if (stripos($target, 'TRANSLIT') !== false) {
+                    $transliterated = self::stripDetachedAccentMarkers($transliterated);
+                }
+
+                if (self::baseEncoding($target) === 'ASCII') {
+                    $transliterated = self::applyAsciiTransliterationFallback(
+                        $transliterated,
+                        $this->value,
+                        $this->encoding,
+                    );
+                }
+
                 return new self($transliterated, $this->mode, $this->encoding);
             }
 
@@ -1990,6 +2080,14 @@ final class XString implements Stringable
             throw new RuntimeException(sprintf('Unable to transliterate string from %s to %s.', $this->encoding, $target));
         }
 
+        if (stripos($target, 'TRANSLIT') !== false) {
+            $converted = self::stripDetachedAccentMarkers($converted);
+        }
+
+        if (self::baseEncoding($target) === 'ASCII') {
+            $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $this->encoding);
+        }
+
         return new self($converted, $this->mode, self::baseEncoding($target));
     }
 
@@ -2004,6 +2102,14 @@ final class XString implements Stringable
                 ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, $normalized_target, $normalized_source);
+
+        if (stripos($normalized_target, 'TRANSLIT') !== false) {
+            $converted = self::stripDetachedAccentMarkers($converted);
+        }
+
+        if ($target_base === 'ASCII') {
+            $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $normalized_source);
+        }
 
         return new self($converted, $this->mode, $target_base);
     }
@@ -2110,6 +2216,8 @@ final class XString implements Stringable
             : ($this->detectEncoding([$this->encoding, 'UTF-8', 'ISO-8859-1', 'ASCII']) ?: $this->encoding);
 
         $converted = self::convertEncoding($this->value, 'ASCII//TRANSLIT', $source);
+        $converted = self::stripDetachedAccentMarkers($converted);
+        $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $source);
 
         return new self($converted, $this->mode, 'ASCII');
     }
@@ -3948,6 +4056,34 @@ final class XString implements Stringable
         return $value;
     }
 
+    private static function applyAsciiTransliterationFallback(string $value, string $originalValue, string $encoding): string
+    {
+        $fallback = self::asciiTransliterationFallback($originalValue, $encoding);
+
+        if (!self::shouldApplyAsciiFallback($value, $originalValue)) {
+            if ($fallback !== '' && $fallback !== $value) {
+                return $fallback;
+            }
+
+            return $value;
+        }
+
+        $candidate = $fallback !== '' ? $fallback : $value;
+
+        if (preg_match('/[^\x00-\x7F]/u', $candidate) === 1) {
+            $normalized = preg_replace('/[^\x00-\x7F]+/u', '?', $candidate);
+            if (is_string($normalized) && $normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        if ($fallback !== '') {
+            return $fallback;
+        }
+
+        return $value;
+    }
+
     private static function shouldApplyAsciiFallback(string $value, string $original): bool
     {
         if ($value === '') {
@@ -3973,35 +4109,88 @@ final class XString implements Stringable
             return '';
         }
 
-        $entities = htmlentities($value, ENT_NOQUOTES, $encoding);
-        if ($entities === false) {
-            return $value;
+        $utf8 = $encoding === 'UTF-8'
+            ? $value
+            : (function_exists('iconv') ? @iconv($encoding, 'UTF-8//IGNORE', $value) : false);
+        if (!is_string($utf8) || $utf8 === '') {
+            $utf8 = $value;
         }
 
-        if ($entities === '') {
+        if (class_exists('\Transliterator')) {
+            $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII');
+            if ($transliterator instanceof \Transliterator) {
+                $transliterated = $transliterator->transliterate($utf8);
+                if (is_string($transliterated) && $transliterated !== '') {
+                    $utf8 = $transliterated;
+                }
+            }
+        }
+
+        if (class_exists('Normalizer')) {
+            $normalized = Normalizer::normalize($utf8, Normalizer::FORM_KD);
+            if (is_string($normalized) && $normalized !== '') {
+                $utf8 = $normalized;
+            }
+        }
+
+        $stripped = preg_replace('/\p{Mn}+/u', '', $utf8);
+        if (is_string($stripped) && $stripped !== '') {
+            $utf8 = $stripped;
+        }
+
+        $utf8 = self::stripDetachedAccentMarkers($utf8);
+        $utf8 = strtr($utf8, self::ASCII_FALLBACK_REPLACEMENTS);
+
+        $entities = htmlentities($utf8, ENT_NOQUOTES, 'UTF-8');
+        if ($entities !== false && $entities !== '') {
+            $entities = preg_replace('/&([a-zA-Z]+?)(?:acute|breve|caron|cedil|circ|grave|lig|macr|orn|ring|slash|th|tilde|uml);/u', '$1', $entities);
+            if (is_string($entities) && $entities !== '') {
+                $entities = preg_replace('/&[^;]+;/', '', $entities);
+                if (is_string($entities) && $entities !== '') {
+                    $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
+                    if ($decoded !== '') {
+                        $utf8 = $decoded;
+                    }
+                }
+            }
+        }
+
+        $ascii = preg_replace('/[^\x00-\x7F]+/u', '?', $utf8);
+        if (is_string($ascii) && $ascii !== '') {
+            return $ascii;
+        }
+
+        return $utf8;
+    }
+
+    private static function stripDetachedAccentMarkers(string $value): string
+    {
+        if ($value === '') {
             return '';
         }
 
-        $entities = preg_replace(
-            '/&([a-zA-Z]+?)(?:acute|cedil|circ|grave|lig|orn|ring|slash|th|tilde|uml);/u',
-            '$1',
-            $entities,
-        );
-        if ($entities === null) {
-            return $value;
+        $patterns = [
+            "/([A-Za-z])\xC2\xB4/",
+            "/([A-Za-z])\xB4/",
+            "/([A-Za-z])\xC2\xA8/",
+            "/([A-Za-z])\xA8/",
+            "/([A-Za-z])\xCB\x86/",
+            "/([A-Za-z])\xCB\x98/",
+            "/([A-Za-z])\xCB\x9A/",
+            "/([A-Za-z])\xCB\x9B/",
+            "/([A-Za-z])\xCB\x9C/",
+            "/([A-Za-z])\xCB\x9D/",
+        ];
+
+        $cleaned = $value;
+        foreach ($patterns as $pattern) {
+            $replaced = preg_replace($pattern, '$1', $cleaned);
+            if (is_string($replaced) && $replaced !== '') {
+                $cleaned = $replaced;
+            }
         }
 
-        $entities = preg_replace('/&[^;]+;/', '', $entities);
-        if ($entities === null) {
-            return $value;
-        }
-
-        $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
-        if ($decoded === '') {
-            return $value;
-        }
-
-        return $decoded;
+        return $cleaned;
     }
 
     private static function uppercaseFirst(string $value, string $encoding): string
