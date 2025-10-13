@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Orryv\XArray\Tests\Docs\XString\Methods;
 
-use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 use Orryv\XString;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class EncryptTest extends TestCase
 {
@@ -21,21 +22,21 @@ final class EncryptTest extends TestCase
     public function testEncryptDefaultRequiresLibsodium(): void
     {
         if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-            self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('libsodium support is required to encrypt using sodium_xchacha20.');
         }
         $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
         $binary = base64_decode((string) $ciphertext, true);
         self::assertIsString($binary);
-        self::assertSame(1, ord($binary[1]));
+        if (function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
+            self::assertSame(1, ord($binary[1]));
+        }
     }
 
     public function testEncryptImmutability(): void
     {
-        if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-            self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
-        }
         $plaintext = XString::new('unchanged');
-        $plaintext->encrypt('password');
+        $plaintext->encrypt('password', 'aes-256-gcm');
         self::assertSame('unchanged', (string) $plaintext);
     }
 

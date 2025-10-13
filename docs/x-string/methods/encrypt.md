@@ -81,16 +81,21 @@ $decrypted = $ciphertext->decrypt('password123', 'aes-256-gcm');
 <!-- test:encrypt-default-requires-libsodium -->
 ```php
 use Orryv\XString;
+use RuntimeException;
 
 if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-#Test: self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
+#Test: $this->expectException(RuntimeException::class);
+#Test: $this->expectExceptionMessage('libsodium support is required to encrypt using sodium_xchacha20.');
 }
 
 $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
 $binary = base64_decode((string) $ciphertext, true);
 
 #Test: self::assertIsString($binary);
+
+if (function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
 #Test: self::assertSame(1, ord($binary[1]));
+}
 ```
 
 ### Original plaintext instance remains unchanged
@@ -99,12 +104,8 @@ $binary = base64_decode((string) $ciphertext, true);
 ```php
 use Orryv\XString;
 
-if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
-#Test: self::markTestSkipped('libsodium extension must be installed to use the default cipher.');
-}
-
 $plaintext = XString::new('unchanged');
-$plaintext->encrypt('password');
+$plaintext->encrypt('password', 'aes-256-gcm');
 
 #Test: self::assertSame('unchanged', (string) $plaintext);
 ```
