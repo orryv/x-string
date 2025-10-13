@@ -232,7 +232,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`htmlEscape`](docs/x-string/methods/htmlEscape.md) | 1.0 | `public function htmlEscape(int $flags = ENT_QUOTES \| ENT_SUBSTITUTE \| ENT_HTML5, string $encoding = 'UTF-8'): self`<br>Escape HTML special characters in the string. You can specify flags and encoding. |
-| [`htmlUnescape`](docs/x-string/methods/html-unescape.md) | 1.0 | `public function htmlUnescape(): self`<br>Unescape HTML special characters in the string. |
+| [`htmlUnescape`](docs/x-string/methods/htmlUnescape.md) | 1.0 | `public function htmlUnescape(): self`<br>Unescape HTML special characters in the string. |
 | [`urlEncode`](docs/x-string/methods/urlEncode.md) | 1.0 | `public function urlEncode(bool $raw = false): self`<br>URL-encode the string. If $raw is true, it uses rawurlencode(). |
 | [`urlDecode`](docs/x-string/methods/urlDecode.md) | 1.0 | `public function urlDecode(bool $raw = false): self`<br>URL-decode the string. If $raw is true, it uses rawurldecode(). |
 | [`nl2br`](docs/x-string/methods/nl2br.md) | 1.0 | `public function nl2br(bool $is_xhtml = true): self`<br>Convert newlines to HTML `<br>` tags. If $is_xhtml is true, it uses <br /> for XHTML compliance. |
