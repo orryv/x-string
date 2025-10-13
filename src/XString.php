@@ -22,6 +22,25 @@ final class XString implements Stringable
     private const DEFAULT_MODE = 'graphemes';
     /** @var array<int, string> */
     private const VALID_MODES = ['bytes', 'codepoints', 'graphemes'];
+    /** @var array<string, string> */
+    private const ASCII_FALLBACK_REPLACEMENTS = [
+        'ß' => 'ss',
+        'ẞ' => 'SS',
+        'Æ' => 'AE',
+        'æ' => 'ae',
+        'Œ' => 'OE',
+        'œ' => 'oe',
+        'Ø' => 'O',
+        'ø' => 'o',
+        'Đ' => 'D',
+        'đ' => 'd',
+        'Ł' => 'L',
+        'ł' => 'l',
+        'Þ' => 'Th',
+        'þ' => 'th',
+        'Ŋ' => 'N',
+        'ŋ' => 'n',
+    ];
 
     private string $value;
     private string $mode;
@@ -4042,35 +4061,47 @@ final class XString implements Stringable
             return '';
         }
 
-        $entities = htmlentities($value, ENT_NOQUOTES, $encoding);
-        if ($entities === false) {
-            return $value;
+        $utf8 = $encoding === 'UTF-8'
+            ? $value
+            : (function_exists('iconv') ? @iconv($encoding, 'UTF-8//IGNORE', $value) : false);
+        if (!is_string($utf8) || $utf8 === '') {
+            $utf8 = $value;
         }
 
-        if ($entities === '') {
-            return '';
+        if (class_exists('Normalizer')) {
+            $normalized = Normalizer::normalize($utf8, Normalizer::FORM_KD);
+            if (is_string($normalized) && $normalized !== '') {
+                $utf8 = $normalized;
+            }
         }
 
-        $entities = preg_replace(
-            '/&([a-zA-Z]+?)(?:acute|cedil|circ|grave|lig|orn|ring|slash|th|tilde|uml);/u',
-            '$1',
-            $entities,
-        );
-        if ($entities === null) {
-            return $value;
+        $stripped = preg_replace('/\p{Mn}+/u', '', $utf8);
+        if (is_string($stripped) && $stripped !== '') {
+            $utf8 = $stripped;
         }
 
-        $entities = preg_replace('/&[^;]+;/', '', $entities);
-        if ($entities === null) {
-            return $value;
+        $utf8 = strtr($utf8, self::ASCII_FALLBACK_REPLACEMENTS);
+
+        $entities = htmlentities($utf8, ENT_NOQUOTES, 'UTF-8');
+        if ($entities !== false && $entities !== '') {
+            $entities = preg_replace('/&([a-zA-Z]+?)(?:acute|breve|caron|cedil|circ|grave|lig|macr|orn|ring|slash|th|tilde|uml);/u', '$1', $entities);
+            if (is_string($entities) && $entities !== '') {
+                $entities = preg_replace('/&[^;]+;/', '', $entities);
+                if (is_string($entities) && $entities !== '') {
+                    $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
+                    if ($decoded !== '') {
+                        $utf8 = $decoded;
+                    }
+                }
+            }
         }
 
-        $decoded = html_entity_decode($entities, ENT_NOQUOTES, 'UTF-8');
-        if ($decoded === '') {
-            return $value;
+        $ascii = preg_replace('/[^\x00-\x7F]+/u', '?', $utf8);
+        if (is_string($ascii) && $ascii !== '') {
+            return $ascii;
         }
 
-        return $decoded;
+        return $utf8;
     }
 
     private static function uppercaseFirst(string $value, string $encoding): string
