@@ -23,7 +23,7 @@ final class EncryptTest extends TestCase
     {
         if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
             $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage('libsodium support is required to encrypt using sodium_xchacha20.');
+            $this->expectExceptionMessage('libsodium support is required for sodium_xchacha20 encryption.');
         }
         $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
         $binary = base64_decode((string) $ciphertext, true);

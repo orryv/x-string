@@ -85,7 +85,7 @@ use RuntimeException;
 
 if (!function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
 #Test: $this->expectException(RuntimeException::class);
-#Test: $this->expectExceptionMessage('libsodium support is required to encrypt using sodium_xchacha20.');
+#Test: $this->expectExceptionMessage('libsodium support is required for sodium_xchacha20 encryption.');
 }
 
 $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
