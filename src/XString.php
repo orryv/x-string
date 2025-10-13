@@ -1416,6 +1416,421 @@ final class XString implements Stringable
         return false;
     }
 
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     * @return false|int|array<int, int>
+     */
+    public function indexOf(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        bool $reversed = false,
+        int|bool $limit = 1,
+        string $behavior = 'or'
+    ): false|int|array {
+        $normalized_behavior = self::normalizeSearchBehavior($behavior);
+        $sequences = self::normalizeIndexOfOptions($search, $normalized_behavior);
+
+        $normalized_limit = $limit === false ? 0 : (int) $limit;
+        if ($normalized_limit < 0) {
+            throw new InvalidArgumentException('Search limit must be greater than or equal to 0 or false.');
+        }
+
+        $matches = $this->collectSequenceMatches(
+            $sequences,
+            $reversed,
+            $normalized_behavior === 'sequential'
+        );
+        if ($matches === []) {
+            return false;
+        }
+
+        if ($normalized_limit === 1) {
+            return $matches[0];
+        }
+
+        if ($limit === false || $normalized_limit === 0) {
+            return $matches;
+        }
+
+        return array_slice($matches, 0, $normalized_limit);
+    }
+
+    /**
+     * @return list<list<HtmlTag|Newline|Regex|string>>
+     */
+    private static function normalizeIndexOfOptions(
+        HtmlTag|Newline|Regex|Stringable|string|array $search,
+        string $behavior
+    ): array {
+        if ($behavior === 'or') {
+            return self::normalizeIndexOfOrOptions($search);
+        }
+
+        return self::normalizeIndexOfSequentialOptions($search);
+    }
+
+    /**
+     * @return list<list<HtmlTag|Newline|Regex|string>>
+     */
+    private static function normalizeIndexOfOrOptions(
+        HtmlTag|Newline|Regex|Stringable|string|array $value
+    ): array {
+        $items = is_array($value) ? $value : [$value];
+        if ($items === []) {
+            throw new InvalidArgumentException('Search candidates cannot be empty.');
+        }
+
+        $options = [];
+
+        foreach ($items as $item) {
+            $sequence_items = is_array($item) ? $item : [$item];
+            if ($sequence_items === []) {
+                throw new InvalidArgumentException('Search sequence cannot be empty.');
+            }
+
+            $sequence = [];
+
+            foreach ($sequence_items as $fragment) {
+                if (is_array($fragment)) {
+                    throw new InvalidArgumentException('Nested search arrays are not supported.');
+                }
+
+                $sequence[] = self::normalizeIndexOfFragment($fragment);
+            }
+
+            $options[] = $sequence;
+        }
+
+        /** @var list<list<HtmlTag|Newline|Regex|string>> $options */
+        return $options;
+    }
+
+    /**
+     * @return list<list<HtmlTag|Newline|Regex|string>>
+     */
+    private static function normalizeIndexOfSequentialOptions(
+        HtmlTag|Newline|Regex|Stringable|string|array $value
+    ): array {
+        if (!is_array($value)) {
+            return [[self::normalizeIndexOfFragment($value)]];
+        }
+
+        if ($value === []) {
+            throw new InvalidArgumentException('Search sequence cannot be empty.');
+        }
+
+        $has_nested_arrays = false;
+        foreach ($value as $item) {
+            if (is_array($item)) {
+                $has_nested_arrays = true;
+                break;
+            }
+        }
+
+        if (!$has_nested_arrays) {
+            $sequence = [];
+            foreach ($value as $fragment) {
+                $sequence[] = self::normalizeIndexOfFragment($fragment);
+            }
+
+            return [$sequence];
+        }
+
+        return self::normalizeIndexOfOrOptions($value);
+    }
+
+    private static function normalizeIndexOfFragment(
+        HtmlTag|Newline|Regex|Stringable|string $fragment
+    ): HtmlTag|Newline|Regex|string {
+        if ($fragment instanceof HtmlTag || $fragment instanceof Regex || $fragment instanceof Newline) {
+            return $fragment;
+        }
+
+        $normalized = self::normalizeFragment($fragment);
+        if ($normalized === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param list<list<HtmlTag|Newline|Regex|string>> $sequences
+     * @return list<int>
+     */
+    private function collectSequenceMatches(array $sequences, bool $reversed, bool $use_sequence_terminal_offset): array
+    {
+        $offsets = [];
+        $subject_length = strlen($this->value);
+
+        foreach ($sequences as $sequence) {
+            $offset = 0;
+
+            while ($offset <= $subject_length) {
+                $match = $this->findNextSequenceOccurrence($sequence, $offset);
+                if ($match === null) {
+                    break;
+                }
+
+                $offsets[] = $use_sequence_terminal_offset ? $match['last'] : $match['start'];
+
+                $next_offset = $match['start'] + 1;
+                if ($next_offset <= $offset) {
+                    $next_offset = $offset + 1;
+                }
+
+                $offset = $next_offset;
+            }
+        }
+
+        if ($offsets === []) {
+            return [];
+        }
+
+        sort($offsets);
+        $offsets = array_values(array_unique($offsets));
+
+        if ($reversed) {
+            $offsets = array_reverse($offsets);
+        }
+
+        return array_map(fn (int $offset): int => $this->convertOffsetToIndex($offset), $offsets);
+    }
+
+    /**
+     * @param list<HtmlTag|Newline|Regex|string> $sequence
+     * @return array{start: int, end: int, last: int}|null
+     */
+    private function findNextSequenceOccurrence(array $sequence, int $offset): ?array
+    {
+        $current_offset = max(0, $offset);
+        $start = null;
+        $last_fragment_start = null;
+
+        foreach ($sequence as $fragment) {
+            $match = $this->findNextFragmentMatch($fragment, $current_offset);
+            if ($match === null) {
+                return null;
+            }
+
+            if ($start === null) {
+                $start = $match['start'];
+            }
+
+            $last_fragment_start = $match['start'];
+            $current_offset = $match['end'];
+        }
+
+        if ($start === null || $last_fragment_start === null) {
+            return null;
+        }
+
+        return [
+            'start' => $start,
+            'end' => $current_offset,
+            'last' => $last_fragment_start,
+        ];
+    }
+
+    /**
+     * @return array{start: int, end: int}|null
+     */
+    private function findNextFragmentMatch(HtmlTag|Newline|Regex|string $fragment, int $offset): ?array
+    {
+        $subject = $this->value;
+        $cursor = max(0, $offset);
+
+        if ($fragment instanceof HtmlTag) {
+            $match = self::findNextHtmlTagMatch($subject, $fragment, $cursor);
+            if ($match === null || !isset($match['offset'], $match['length'])) {
+                return null;
+            }
+
+            $start = (int) $match['offset'];
+            $length = (int) $match['length'];
+
+            return [
+                'start' => $start,
+                'end' => $start + $length,
+            ];
+        }
+
+        if ($fragment instanceof Regex) {
+            $pattern = (string) $fragment;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, $cursor, &$matches) {
+                    return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE, $cursor);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return null;
+            }
+
+            if (!isset($matches[0]) || !is_array($matches[0]) || !isset($matches[0][0], $matches[0][1]) || !is_int($matches[0][1])) {
+                return null;
+            }
+
+            $match_string = (string) $matches[0][0];
+            $start = (int) $matches[0][1];
+
+            return [
+                'start' => $start,
+                'end' => $start + strlen($match_string),
+            ];
+        }
+
+        if ($fragment instanceof Newline) {
+            $best_match = null;
+
+            foreach ($this->newlineFragments($fragment) as $line_break) {
+                $position = strpos($subject, $line_break, $cursor);
+                if ($position === false) {
+                    continue;
+                }
+
+                $candidate = [
+                    'start' => (int) $position,
+                    'end' => (int) $position + strlen($line_break),
+                ];
+
+                if (
+                    $best_match === null
+                    || $candidate['start'] < $best_match['start']
+                    || ($candidate['start'] === $best_match['start'] && $candidate['end'] > $best_match['end'])
+                ) {
+                    $best_match = $candidate;
+                }
+            }
+
+            return $best_match;
+        }
+
+        $fragment_value = (string) $fragment;
+        $position = strpos($subject, $fragment_value, $cursor);
+        if ($position === false) {
+            return null;
+        }
+
+        $start = (int) $position;
+
+        return [
+            'start' => $start,
+            'end' => $start + strlen($fragment_value),
+        ];
+    }
+
+    public function isEmpty(bool $newline = true, bool $space = true, bool $tab = true): bool
+    {
+        if ($this->value === '') {
+            return true;
+        }
+
+        if (!$newline && !$space && !$tab) {
+            return $this->value === '';
+        }
+
+        $mask = self::buildTrimMask($newline, $space, $tab);
+        if ($mask === '') {
+            return $this->value === '';
+        }
+
+        return trim($this->value, $mask) === '';
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function startsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    {
+        $candidates = is_array($search) ? $search : [$search];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Search candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested search arrays are not supported.');
+            }
+
+            if ($this->startsWithCandidate($candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function endsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    {
+        $candidates = is_array($search) ? $search : [$search];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Search candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested search arrays are not supported.');
+            }
+
+            if ($this->endsWithCandidate($candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $string
+     */
+    public function equals(HtmlTag|Newline|Regex|Stringable|string|array $string, bool $case_sensitive = true): bool
+    {
+        $candidates = is_array($string) ? $string : [$string];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Comparison candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested comparison arrays are not supported.');
+            }
+
+            if ($this->equalsCandidate($candidate, $case_sensitive)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
+     */
+    public function countOccurrences(HtmlTag|Newline|Regex|Stringable|string|array $search): int
+    {
+        $candidates = is_array($search) ? $search : [$search];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Search candidates cannot be empty.');
+        }
+
+        $count = 0;
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested search arrays are not supported.');
+            }
+
+            $count += $this->countCandidateOccurrences($candidate);
+        }
+
+        return $count;
+    }
+
     public function similarityScore(
         HtmlTag|Newline|Regex|Stringable|string|array $comparison,
         string $algorithm = 'github-style',
@@ -1867,6 +2282,495 @@ final class XString implements Stringable
         }
 
         return preg_match('/^\p{Lu}\.$/u', $lastWord) === 1;
+    }
+
+    /**
+     * @return array{offset: int, index: int}|null
+     */
+    private function locateCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate, bool $reversed): ?array
+    {
+        if ($candidate instanceof HtmlTag) {
+            if ($reversed) {
+                $matches = self::findAllHtmlTagMatches($this->value, $candidate);
+                if ($matches === []) {
+                    return null;
+                }
+
+                $match = end($matches);
+                if (!is_array($match) || !isset($match['offset'])) {
+                    return null;
+                }
+
+                $offset = (int) $match['offset'];
+            } else {
+                $match = self::findNextHtmlTagMatch($this->value, $candidate, 0);
+                if ($match === null || !isset($match['offset'])) {
+                    return null;
+                }
+
+                $offset = (int) $match['offset'];
+            }
+
+            return [
+                'offset' => $offset,
+                'index' => $this->convertOffsetToIndex($offset),
+            ];
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+
+            if ($reversed) {
+                $matches = [];
+                $result = self::withRegexErrorHandling(
+                    static function () use ($pattern, $subject, &$matches) {
+                        return preg_match_all($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                    }
+                );
+
+                if (!is_int($result) || $result === 0) {
+                    return null;
+                }
+
+                $match_set = $matches[0] ?? [];
+                if ($match_set === []) {
+                    return null;
+                }
+
+                $last = end($match_set);
+                if (!is_array($last) || !isset($last[1]) || !is_int($last[1])) {
+                    return null;
+                }
+
+                $offset = $last[1];
+            } else {
+                $matches = [];
+                $result = self::withRegexErrorHandling(
+                    static function () use ($pattern, $subject, &$matches) {
+                        return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                    }
+                );
+
+                if (!is_int($result) || $result === 0) {
+                    return null;
+                }
+
+                if (!isset($matches[0]) || !is_array($matches[0]) || !isset($matches[0][1]) || !is_int($matches[0][1])) {
+                    return null;
+                }
+
+                $offset = $matches[0][1];
+            }
+
+            return [
+                'offset' => $offset,
+                'index' => $this->convertOffsetToIndex($offset),
+            ];
+        }
+
+        if ($candidate instanceof Newline) {
+            $offset = $this->locateNewlineOffset($candidate, $reversed);
+            if ($offset === null) {
+                return null;
+            }
+
+            return [
+                'offset' => $offset,
+                'index' => $this->convertOffsetToIndex($offset),
+            ];
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        $position = $reversed ? strrpos($this->value, $fragment) : strpos($this->value, $fragment);
+        if ($position === false) {
+            return null;
+        }
+
+        $offset = (int) $position;
+
+        return [
+            'offset' => $offset,
+            'index' => $this->convertOffsetToIndex($offset),
+        ];
+    }
+
+    private function startsWithCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate): bool
+    {
+        if ($candidate instanceof HtmlTag) {
+            $match = self::findNextHtmlTagMatch($this->value, $candidate, 0);
+            return $match !== null && isset($match['offset']) && (int) $match['offset'] === 0;
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return false;
+            }
+
+            return isset($matches[0][1]) && (int) $matches[0][1] === 0;
+        }
+
+        if ($candidate instanceof Newline) {
+            $config = $candidate->getStartsWithConfig();
+            if ($config !== null) {
+                if ($this->value === '') {
+                    return false;
+                }
+
+                $line = $this->firstLineForNewline($candidate);
+                $comparison = $config['trim'] ? ltrim($line, " \t") : $line;
+
+                return str_starts_with($comparison, $config['prefix']);
+            }
+
+            foreach ($this->newlineFragments($candidate) as $fragment) {
+                if (str_starts_with($this->value, $fragment)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        return str_starts_with($this->value, $fragment);
+    }
+
+    private function endsWithCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate): bool
+    {
+        if ($candidate instanceof HtmlTag) {
+            $matches = self::findAllHtmlTagMatches($this->value, $candidate);
+            if ($matches === []) {
+                return false;
+            }
+
+            $match = end($matches);
+            if (!is_array($match) || !isset($match['offset'], $match['length'])) {
+                return false;
+            }
+
+            $end = (int) $match['offset'] + (int) $match['length'];
+
+            return $end === strlen($this->value);
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match_all($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return false;
+            }
+
+            $length = strlen($subject);
+            $match_set = $matches[0] ?? [];
+
+            for ($index = count($match_set) - 1; $index >= 0; $index--) {
+                $match = $match_set[$index];
+                if (!is_array($match) || !isset($match[0], $match[1]) || !is_int($match[1])) {
+                    continue;
+                }
+
+                $match_string = (string) $match[0];
+                $offset = $match[1];
+                $end = $offset + strlen($match_string);
+
+                if ($match_string === '') {
+                    if ($offset === $length) {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if ($end === $length) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($candidate instanceof Newline) {
+            foreach ($this->newlineFragments($candidate) as $fragment) {
+                if ($fragment !== '' && str_ends_with($this->value, $fragment)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        return str_ends_with($this->value, $fragment);
+    }
+
+    private function equalsCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate, bool $case_sensitive): bool
+    {
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return false;
+            }
+
+            if (!isset($matches[0]) || !is_array($matches[0]) || !isset($matches[0][0], $matches[0][1])) {
+                return false;
+            }
+
+            return $matches[0][1] === 0 && $matches[0][0] === $subject;
+        }
+
+        if ($candidate instanceof Newline) {
+            $fragments = $this->newlineFragments($candidate);
+            $subject = $this->value;
+
+            if ($case_sensitive) {
+                foreach ($fragments as $fragment) {
+                    if ($subject === $fragment) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            $normalized_subject = self::lowercaseString($subject, $this->encoding);
+
+            foreach ($fragments as $fragment) {
+                if ($normalized_subject === self::lowercaseString($fragment, $this->encoding)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $comparison = self::normalizeFragment($candidate);
+
+        if ($case_sensitive) {
+            return $this->value === $comparison;
+        }
+
+        return self::lowercaseString($this->value, $this->encoding)
+            === self::lowercaseString($comparison, $this->encoding);
+    }
+
+    private function countCandidateOccurrences(HtmlTag|Newline|Regex|Stringable|string $candidate): int
+    {
+        if ($candidate instanceof HtmlTag) {
+            return count(self::findAllHtmlTagMatches($this->value, $candidate));
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match_all($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return 0;
+            }
+
+            $occurrences = 0;
+
+            foreach ($matches[0] ?? [] as $match) {
+                if (!is_array($match) || !isset($match[0])) {
+                    continue;
+                }
+
+                $match_string = (string) $match[0];
+                if ($match_string === '') {
+                    throw new InvalidArgumentException('Regex pattern cannot match an empty string when counting occurrences.');
+                }
+
+                $occurrences++;
+            }
+
+            return $occurrences;
+        }
+
+        if ($candidate instanceof Newline) {
+            $fragment = (string) $candidate;
+            $canonical = self::canonicalizeLineBreak($fragment);
+
+            if ($fragment === '' && $canonical === '') {
+                throw new InvalidArgumentException('Search value cannot be empty.');
+            }
+
+            if ($fragment !== '') {
+                $count = substr_count($this->value, $fragment);
+                if ($count > 0 || $canonical === '' || $canonical === $fragment) {
+                    return $count;
+                }
+            }
+
+            if ($canonical !== '' && $canonical !== $fragment) {
+                return substr_count($this->value, $canonical);
+            }
+
+            return 0;
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        return substr_count($this->value, $fragment);
+    }
+
+    private function convertOffsetToIndex(int $offset): int
+    {
+        if ($offset <= 0) {
+            return 0;
+        }
+
+        $prefix = substr($this->value, 0, $offset);
+        if ($prefix === false || $prefix === '') {
+            return 0;
+        }
+
+        return match ($this->mode) {
+            'bytes' => strlen($prefix),
+            'codepoints' => $this->calculateCodepointLength($prefix),
+            default => $this->calculateGraphemeLength($prefix),
+        };
+    }
+
+    private function calculateCodepointLength(string $value): int
+    {
+        if ($value === '') {
+            return 0;
+        }
+
+        if (function_exists('mb_strlen')) {
+            $length = mb_strlen($value, $this->encoding);
+            if (is_int($length)) {
+                return $length;
+            }
+        }
+
+        return strlen($value);
+    }
+
+    private function calculateGraphemeLength(string $value): int
+    {
+        if ($value === '') {
+            return 0;
+        }
+
+        if (function_exists('grapheme_strlen')) {
+            $length = grapheme_strlen($value);
+            if (is_int($length)) {
+                return $length;
+            }
+        }
+
+        $count = preg_match_all('/\\X/u', $value);
+        if ($count !== false) {
+            return $count;
+        }
+
+        return strlen($value);
+    }
+
+    private function newlineFragments(Newline $newline): array
+    {
+        $fragment = (string) $newline;
+        $canonical = self::canonicalizeLineBreak($fragment);
+
+        if ($fragment === '' && $canonical === '') {
+            throw new InvalidArgumentException('Search value cannot be empty.');
+        }
+
+        $fragments = [];
+
+        if ($fragment !== '') {
+            $fragments[] = $fragment;
+        }
+
+        if ($canonical !== '' && $canonical !== $fragment) {
+            $fragments[] = $canonical;
+        }
+
+        if ($fragments === []) {
+            $fragments[] = '';
+        }
+
+        return array_values(array_unique($fragments));
+    }
+
+    private function firstLineForNewline(Newline $newline): string
+    {
+        if ($this->value === '') {
+            return '';
+        }
+
+        $line_break = (string) $newline;
+        $subject = $this->value;
+
+        if ($line_break === '') {
+            return $subject;
+        }
+
+        $position = strpos($subject, $line_break);
+        if ($position === false) {
+            $canonical = self::canonicalizeLineBreak($line_break);
+            if ($canonical !== '' && $canonical !== $line_break) {
+                $position = strpos($subject, $canonical);
+            }
+        }
+
+        if ($position === false) {
+            return $subject;
+        }
+
+        $line = substr($subject, 0, $position);
+
+        return $line === false ? '' : $line;
     }
 
     /**
