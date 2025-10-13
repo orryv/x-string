@@ -76,7 +76,7 @@ $decrypted = $ciphertext->decrypt('password123', 'aes-256-gcm');
 #Test: self::assertSame('Sensitive payload', (string) $decrypted);
 ```
 
-### Default cipher falls back to AES when libsodium is unavailable
+### Default cipher prefers libsodium but falls back when unavailable
 
 <!-- test:encrypt-default-fallback -->
 ```php
@@ -86,7 +86,11 @@ $ciphertext = XString::new('fallback-demo')->encrypt('hunter2');
 $binary = base64_decode((string) $ciphertext, true);
 
 #Test: self::assertIsString($binary);
-#Test: self::assertSame(2, ord($binary[1])); // algorithm id 2 => AES-256-GCM
+if (function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
+    #Test: self::assertSame(1, ord($binary[1])); // libsodium preferred
+} else {
+    #Test: self::assertSame(2, ord($binary[1])); // AES-256-GCM fallback
+}
 ```
 
 ### Requesting sodium_xchacha20 gracefully degrades
@@ -98,7 +102,11 @@ use Orryv\XString;
 $ciphertext = XString::new('libsodium missing?')->encrypt('secret', 'sodium_xchacha20');
 $binary = base64_decode((string) $ciphertext, true);
 
-#Test: self::assertSame(2, ord($binary[1]));
+if (function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')) {
+    #Test: self::assertSame(1, ord($binary[1]));
+} else {
+    #Test: self::assertSame(2, ord($binary[1]));
+}
 ```
 
 ### Original plaintext instance remains unchanged
