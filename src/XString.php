@@ -1584,6 +1584,122 @@ final class XString implements Stringable
         return $this->replace($search, '', $limit, $reversed);
     }
 
+    public function stripEmojis(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $clusters = self::splitByMode($this->value, 'graphemes', $this->encoding);
+        if ($clusters === []) {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $filtered = [];
+        foreach ($clusters as $cluster) {
+            if (!self::isEmojiCluster($cluster)) {
+                $filtered[] = $cluster;
+            }
+        }
+
+        return new self(implode('', $filtered), $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $allowed_tags
+     */
+    public function stripTags(HtmlTag|Newline|Regex|Stringable|string|array $allowed_tags = ''): self
+    {
+        $allowed = self::normalizeAllowedTags($allowed_tags);
+
+        return new self(strip_tags($this->value, $allowed), $this->mode, $this->encoding);
+    }
+
+    public function stripAccents(): self
+    {
+        if ($this->value === '') {
+            return new self('', $this->mode, $this->encoding);
+        }
+
+        $value = $this->value;
+
+        if (class_exists('Normalizer')) {
+            $normalized = Normalizer::normalize($value, Normalizer::FORM_D);
+            if (is_string($normalized)) {
+                $value = $normalized;
+            }
+        }
+
+        $value = preg_replace('/\p{Mn}+/u', '', $value);
+        if (!is_string($value)) {
+            $value = $this->value;
+        }
+
+        $value = self::stripDetachedAccentMarkers($value);
+        $value = strtr($value, self::ASCII_FALLBACK_REPLACEMENTS);
+
+        if (class_exists('Normalizer')) {
+            $recomposed = Normalizer::normalize($value, Normalizer::FORM_C);
+            if (is_string($recomposed)) {
+                $value = $recomposed;
+            }
+        }
+
+        return new self($value, $this->mode, $this->encoding);
+    }
+
+    public function ensurePrefix(Newline|HtmlTag|string $prefix): self
+    {
+        $fragment = self::normalizeFragment($prefix);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Prefix cannot be empty.');
+        }
+
+        if ($this->startsWith($prefix)) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        return new self($fragment . $this->value, $this->mode, $this->encoding);
+    }
+
+    public function ensureSuffix(Newline|HtmlTag|string $suffix): self
+    {
+        $fragment = self::normalizeFragment($suffix);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Suffix cannot be empty.');
+        }
+
+        if ($this->endsWith($suffix)) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        return new self($this->value . $fragment, $this->mode, $this->encoding);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $prefix
+     */
+    public function removePrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): self
+    {
+        $candidates = is_array($prefix) ? $prefix : [$prefix];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Prefix candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested prefix arrays are not supported.');
+            }
+
+            $result = $this->removePrefixCandidate($candidate);
+            if ($result !== null) {
+                return new self($result, $this->mode, $this->encoding);
+            }
+        }
+
+        return new self($this->value, $this->mode, $this->encoding);
+    }
+
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
@@ -3619,6 +3735,76 @@ final class XString implements Stringable
         return str_contains($this->value, $fragment);
     }
 
+    private function removePrefixCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate): ?string
+    {
+        if ($this->value === '') {
+            return null;
+        }
+
+        if ($candidate instanceof HtmlTag) {
+            $match = self::findNextHtmlTagMatch($this->value, $candidate, 0);
+            if ($match !== null && $match['offset'] === 0 && $match['length'] > 0) {
+                return substr($this->value, $match['length']);
+            }
+
+            return null;
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return null;
+            }
+
+            if (!isset($matches[0][0], $matches[0][1])) {
+                return null;
+            }
+
+            $matched = (string) $matches[0][0];
+            $offset = (int) $matches[0][1];
+
+            if ($offset !== 0 || $matched === '') {
+                return null;
+            }
+
+            return substr($this->value, strlen($matched));
+        }
+
+        if ($candidate instanceof Newline) {
+            foreach ($this->newlineFragments($candidate) as $fragment) {
+                if ($fragment === '') {
+                    continue;
+                }
+
+                if (str_starts_with($this->value, $fragment)) {
+                    return substr($this->value, strlen($fragment));
+                }
+            }
+
+            return null;
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Prefix cannot be empty.');
+        }
+
+        if (!str_starts_with($this->value, $fragment)) {
+            return null;
+        }
+
+        return substr($this->value, strlen($fragment));
+    }
+
     private static function normalizeFragment(mixed $value): string
     {
         if (is_string($value)) {
@@ -3634,6 +3820,63 @@ final class XString implements Stringable
         }
 
         throw new InvalidArgumentException('Only strings and stringable values are supported.');
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $allowed_tags
+     */
+    private static function normalizeAllowedTags(HtmlTag|Newline|Regex|Stringable|string|array $allowed_tags): string
+    {
+        $candidates = is_array($allowed_tags) ? $allowed_tags : [$allowed_tags];
+        if ($candidates === []) {
+            return '';
+        }
+
+        $fragments = [];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested allowed tag arrays are not supported.');
+            }
+
+            if ($candidate instanceof HtmlTag) {
+                $tag_name = trim($candidate->getRawTagName());
+                if ($tag_name !== '') {
+                    $fragments[] = sprintf('<%s>', $tag_name);
+                }
+
+                continue;
+            }
+
+            $fragment = trim(self::normalizeFragment($candidate));
+            if ($fragment === '') {
+                continue;
+            }
+
+            if (str_contains($fragment, '<')) {
+                $fragments[] = $fragment;
+
+                continue;
+            }
+
+            $parts = preg_split('/\s+/', $fragment, -1, PREG_SPLIT_NO_EMPTY);
+            if ($parts === false) {
+                continue;
+            }
+
+            foreach ($parts as $part) {
+                $clean = trim((string) $part, "<> ");
+                if ($clean !== '') {
+                    $fragments[] = sprintf('<%s>', $clean);
+                }
+            }
+        }
+
+        if ($fragments === []) {
+            return '';
+        }
+
+        return implode('', array_values(array_unique($fragments)));
     }
 
     /**
@@ -4377,6 +4620,23 @@ final class XString implements Stringable
         }
 
         return $clusters;
+    }
+
+    private static function isEmojiCluster(string $cluster): bool
+    {
+        if ($cluster === '') {
+            return false;
+        }
+
+        if (preg_match('/\p{Extended_Pictographic}/u', $cluster) === 1) {
+            return true;
+        }
+
+        if (preg_match('/\p{Regional_Indicator}/u', $cluster) === 1) {
+            return true;
+        }
+
+        return preg_match('/^[#*0-9]\x{FE0F}?\x{20E3}$/u', $cluster) === 1;
     }
 
     private static function shouldExtendCluster(string $codepoint): bool
