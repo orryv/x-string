@@ -247,10 +247,10 @@ Used to tell search arguments in other methods that you want to search for newli
 | Method | Version | Signature & Description |
 | --- | --- | --- |
 | [`new`](docs/newline/methods/new.md) | 1.0 | `public static function new(null\|string $newline = null): self`<br>Create a new Newline instance. Default newline is *any*. |
-| [`startsWith`](docs/newline/methods/startsWith.md) | 1.0 | `public function startsWith(null\|string $string, bool $trim = false): self`<br>Create a newline adapter that targets lines beginning with `$string`. Optional trimming ignores leading spaces and tabs before matching. |
-| [`endsWith`](docs/newline/methods/endsWith.md) | 1.0 | `public function endsWith(null\|string $string, bool $trim = false): self`<br>Create a newline adapter that targets lines ending with `$string`. Optional trimming ignores trailing spaces and tabs before matching. |
-| [`contains`](docs/newline/methods/contains.md) | 1.0 | `public function contains(null\|string $string): self`<br>Create a newline adapter that targets lines containing `$string`. |
-| [`equals`](docs/newline/methods/equals.md) | 1.0 | `public function equals(null\|string $string): self`<br>Create a newline adapter that targets lines exactly matching `$string`. |
+| [`startsWith`](docs/newline/methods/startsWith.md) | 1.0 | `public function startsWith(null\|string $string, bool $trim = false): self`<br>Creates a newline that starts with `$string`. Can be used to check if the newline starts with the specified string. |
+| [`endsWith`](docs/newline/methods/endsWith.md) | 1.0 | `public function endsWith(null\|string $string, bool $trim = false): self`<br>Creates a newline that ends with `$string`. Can be used to check if the newline ends with the specified string. |
+| [`contains`](docs/newline/methods/contains.md) | 1.0 | `public function contains(null\|string $string): self`<br>Used to check if a newline contains the specified string. |
+| [`equals`](docs/newline/methods/equals.md) | 1.0 | `public function equals(null\|string $string): self`<br>Used to check if a newline is equal to the specified string. |
 
 ## Regex class methods (all static)
 
@@ -259,7 +259,7 @@ Used to tell search arguments in other methods that you want to search for a reg
 <!-- method-list -->
 | Method | Version | Signature & Description |
 | --- | --- | --- |
-| [`new`](docs/regex/methods/new.md) | 1.0 | `public static function new(string $pattern): self`<br>Create an immutable regex adapter that stores the supplied PCRE pattern (including delimiters and inline modifiers). |
+| [`new`](docs/regex/methods/new.md) | 1.0 | `public static function new(string $pattern, int $modifiers = 0): self`<br>Create a new Pattern instance. $modifiers is a bitmask of regex modifiers (ex. Pattern::MODIFIER_CASE_INSENSITIVE). |
 
 ## HtmlTag class methods
 
