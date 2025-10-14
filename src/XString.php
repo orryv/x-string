@@ -1702,6 +1702,74 @@ final class XString implements Stringable
     }
 
     /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $suffix
+     */
+    public function removeSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): self
+    {
+        $candidates = is_array($suffix) ? $suffix : [$suffix];
+        if ($candidates === []) {
+            throw new InvalidArgumentException('Suffix candidates cannot be empty.');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                throw new InvalidArgumentException('Nested suffix arrays are not supported.');
+            }
+
+            $result = $this->removeSuffixCandidate($candidate);
+            if ($result !== null) {
+                return new self($result, $this->mode, $this->encoding);
+            }
+        }
+
+        return new self($this->value, $this->mode, $this->encoding);
+    }
+
+    public function togglePrefix(Newline|HtmlTag|string $prefix): self
+    {
+        $fragment = self::normalizeFragment($prefix);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Prefix cannot be empty.');
+        }
+
+        if ($this->startsWith($prefix)) {
+            return $this->removePrefix($prefix);
+        }
+
+        return $this->ensurePrefix($prefix);
+    }
+
+    public function toggleSuffix(Newline|HtmlTag|string $suffix): self
+    {
+        $fragment = self::normalizeFragment($suffix);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Suffix cannot be empty.');
+        }
+
+        if ($this->endsWith($suffix)) {
+            return $this->removeSuffix($suffix);
+        }
+
+        return $this->ensureSuffix($suffix);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $prefix
+     */
+    public function hasPrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): bool
+    {
+        return $this->startsWith($prefix);
+    }
+
+    /**
+     * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $suffix
+     */
+    public function hasSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): bool
+    {
+        return $this->endsWith($suffix);
+    }
+
+    /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
     public function contains(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
@@ -3981,6 +4049,98 @@ final class XString implements Stringable
         }
 
         return substr($this->value, strlen($fragment));
+    }
+
+    private function removeSuffixCandidate(HtmlTag|Newline|Regex|Stringable|string $candidate): ?string
+    {
+        if ($this->value === '') {
+            return null;
+        }
+
+        if ($candidate instanceof HtmlTag) {
+            $matches = self::findAllHtmlTagMatches($this->value, $candidate);
+            if ($matches === []) {
+                return null;
+            }
+
+            $match = end($matches);
+            if (!is_array($match) || !isset($match['offset'], $match['length'])) {
+                return null;
+            }
+
+            $offset = (int) $match['offset'];
+            $length = (int) $match['length'];
+            if ($length <= 0 || $offset + $length !== strlen($this->value)) {
+                return null;
+            }
+
+            return substr($this->value, 0, $offset);
+        }
+
+        if ($candidate instanceof Regex) {
+            $pattern = (string) $candidate;
+            $subject = $this->value;
+            $matches = [];
+
+            $result = self::withRegexErrorHandling(
+                static function () use ($pattern, $subject, &$matches) {
+                    return preg_match_all($pattern, $subject, $matches, PREG_OFFSET_CAPTURE);
+                }
+            );
+
+            if (!is_int($result) || $result === 0) {
+                return null;
+            }
+
+            $match_set = $matches[0] ?? [];
+            $length = strlen($subject);
+
+            for ($index = count($match_set) - 1; $index >= 0; $index--) {
+                $match = $match_set[$index] ?? null;
+                if (!is_array($match) || !isset($match[0], $match[1]) || !is_int($match[1])) {
+                    continue;
+                }
+
+                $matched_string = (string) $match[0];
+                if ($matched_string === '') {
+                    continue;
+                }
+
+                $offset = $match[1];
+                $end = $offset + strlen($matched_string);
+
+                if ($end === $length) {
+                    return substr($subject, 0, $offset);
+                }
+            }
+
+            return null;
+        }
+
+        if ($candidate instanceof Newline) {
+            foreach ($this->newlineFragments($candidate) as $fragment) {
+                if ($fragment === '') {
+                    continue;
+                }
+
+                if (str_ends_with($this->value, $fragment)) {
+                    return substr($this->value, 0, strlen($this->value) - strlen($fragment));
+                }
+            }
+
+            return null;
+        }
+
+        $fragment = self::normalizeFragment($candidate);
+        if ($fragment === '') {
+            throw new InvalidArgumentException('Suffix cannot be empty.');
+        }
+
+        if (!str_ends_with($this->value, $fragment)) {
+            return null;
+        }
+
+        return substr($this->value, 0, strlen($this->value) - strlen($fragment));
     }
 
     private static function normalizeFragment(mixed $value): string
