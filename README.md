@@ -1,70 +1,86 @@
 # XString
 
+XString is an immutable, fluent string manipulation toolkit for PHP. It exposes a
+single value object that keeps track of the underlying string, the logical
+length "mode" (bytes, codepoints, or graphemes), and the active encoding. Every
+operation returns a new instance so that strings can be safely composed without
+side effects.
+
 ## Requirements
-- **PHP Versions:** 8.2, 8.3, 8.4
-- **Extensions:** `mbstring`, `intl` (Normalizer + grapheme functions), `iconv`
-- **Dev tools:** PHPUnit ^11, Psalm ^5, PHPStan ^1.11, Infection (optional), Composer
-- **OS:** Linux/macOS/Windows. Docker optional.
 
-## TODO's
-- [ ] trim(), ltrim(), rtrim(): must also have a parameter to trim other characters than space, tab, newline. (ex. comma, dot, ...)
-- [ ] think about a method that does the reverse as trim: it makes sure a character (or multiple characters) is at the start and/or end of the string. (ex. make sure a string starts with / and ends with /)
+- PHP 8.1 or higher.
+- The library works without extensions, but it takes advantage of the following
+  when they are available:
+  - `ext-mbstring` for multibyte-safe string operations.
+  - `ext-intl` (Normalizer + grapheme functions) for Unicode normalization.
+  - `ext-iconv` as an additional encoding conversion fallback.
+  - `ext-openssl` for AES-256-GCM encryption/decryption helpers.
 
-# Roadmap
-- [ ] Setup the project
-  - Create composer.json with all needed dependencies:
-     - PHPUnit
-  - Add scripts to dockerfile (if relevant):
-    - Docker scripts (if docker is used in this project)
-      - `docker:up`: start docker containers
-      - `docker:down`: stop docker containers
-      - `docker:reset`: remove docker containers and images and start up again
-      - `docker:restart`: helpful if changes made to dockerfile or docker-compose.
-    - Testing:
-      - `test`: tests everything
-      - `test:no-docker`: all tests except ones that depend on docker
-      - `test:unit` / `test:unit:no-docker`: unit tests
-      - `test:integration` / `test:integration:no-docker`: integration tests
-      - `test:contract` / `test:contract:no-docker`
-      - `test:snapshot` / `test:snapshot:no-docker`
-      - `test:end-to-end` / `test:end-to-end:no-docker`
-      - `test:performance` / `test:performance:no-docker`
-  - If docker is needed for this project: add all needed dockerfiles in docker/
-  - Create .gitignore and add relevant files and paths
-  - Add github CI pipelines:
-    - PHPUnit on PHP 8.2
-    - PHPUnit on PHP 8.3
-    - PHPUnit on PHP 8.4
-- [ ] Create tests for everything that is testable. Split up/refactor code if needed for better testing (without losing the exact functionalities it accomplishes). Make sure composer `test:no-docker` works as expected (should run every test that doesn't need docker.) Tests are (create the folders in tests/ and put .gitkeep if empty):
-  - Unit
-  - Integration
-  - Contract
-  - Snapshot
-  - End-To-End
-  - Performance
+## Installation
 
-# Post-TODO's
+```bash
+composer require orryv/x-string
+```
 
-- [ ] Make sure all parameters, variables, etc. are snake_case.
-- [ ] Make sure every method, function and class has docblock, containing a description, the arguments, what it returns, what it throws (exceptions, if any.)
+XString ships as a regular Composer library. All classes live in the `Orryv` or
+`Orryv\\XString` namespaces and are autoloaded through PSR-4.
 
-# Issues, improvements and advice
+## Quick start
 
-# Documentation
+```php
+use Orryv\\XString;
 
-Documentation follows a specific design, but here are some things you must know:
+$xstring = XString::new('  Grüß Gott!  ')
+    ->trim()
+    ->normalize()
+    ->toAscii()
+    ->toUpper();
 
-- Use `<!-- test -->` before code blocks to reference that the code in the code snippet should be used in tests (they are a special test in PHPUnit: Documentation tests.) Write `#Test: ` before the PHPUnit assertions inside the code block.
+echo (string) $xstring; // outputs "GRUSS GOTT!"
+```
 
-# Concept
+The fluent API covers common text tasks: casing, normalization, substring
+operations, tokenisation, searching, replacing, cryptographic helpers,
+formatting, and more. Each operation honours the configured mode so you can work
+with multibyte characters and grapheme clusters reliably.
 
-A class to manipulate strings. Uses __toString() to convert to string when needed. **XString is immutable** and stores a single internal **string**, a **mode** (`bytes`|`codepoints`|`graphemes`) and an **encoding** (default **UTF‑8**). Default length/iteration **mode is graphemes**.
+## Documentation
 
-### Important notes and considerations
+Comprehensive documentation for every public method lives in the `docs/`
+folder. Each markdown file describes behaviour, edge cases, and contains tested
+examples (prefixed with `<!-- test:... -->`) that are automatically converted
+into PHPUnit tests. Start with `docs/examples/basic.md` for an overview and use
+the per-method pages under `docs/x-string/` for reference material.
 
-- All inputs are plain **string** or adapters (`Newline`, `HtmlTag`, `Regex`). **Mode** controls how positions/lengths are interpreted; default is **graphemes**.
+Helper types such as `Newline`, `Regex`, and `HtmlTag` are documented in their
+respective subdirectories. The `XStringType` factory shortcuts mirror the
+"type" helpers described throughout the docs.
 
-### Setup
+## Testing
+
+Run the full test suite (documentation examples + PHPUnit suites) with:
+
+```bash
+composer test
+```
+
+If you add or modify documentation examples, regenerate the corresponding tests
+with `composer compose-docs-tests` before running PHPUnit.
+
+## Contributing
+
+Issues and pull requests are welcome. Please keep the API immutable, document
+new features in the `docs/` folder, and include representative examples so that
+new behaviour is exercised by the generated tests.
+
+## License
+
+The library is open-source software licensed under the [MIT license](LICENSE).
+
+## API reference
+
+The tables below are used to generate documentation-based tests. Each entry
+links to the detailed markdown page in the `docs/` directory.
 
 <!-- method-list -->
 | Method | Version | Signature & Description |
