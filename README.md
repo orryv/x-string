@@ -151,8 +151,8 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | --- | --- | --- |
 | [`strip`](docs/x-string/methods/strip.md) | 1.0 | `public function strip(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $search, null\|int $limit = null, $reversed = false): self`<br>Remove all occurrences of a specific string from the current string. By default it removes all occurrences, but you can limit the number of removals by setting the $limit parameter. If $reversed is true, it removes from the end of the string. |
 | [`stripEmojis`](docs/x-string/methods/stripEmojis.md) | 1.0 | `public function stripEmojis(): self`<br>Remove all emoji characters from the string. |
-| [`stripTags`](docs/x-string/methods/strip-tags.md) | 1.0 | `public function stripTags(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $allowed_tags = ''): self`<br>Strip HTML and PHP tags from the string. You can specify tags that should not be stripped by providing them in the $allowed_tags parameter. |
-| [`stripAccents`](docs/x-string/methods/strip-accents.md) | 1.0 | `public function stripAccents(): self`<br>Remove accents from characters in the string. (e.g. é -> e, ñ -> n) |
+| [`stripTags`](docs/x-string/methods/stripTags.md) | 1.0 | `public function stripTags(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $allowed_tags = ''): self`<br>Strip HTML and PHP tags from the string. You can specify tags that should not be stripped by providing them in the $allowed_tags parameter. |
+| [`stripAccents`](docs/x-string/methods/stripAccents.md) | 1.0 | `public function stripAccents(): self`<br>Remove accents from characters in the string. (e.g. é -> e, ñ -> n) |
 
 ### Affixing
 
