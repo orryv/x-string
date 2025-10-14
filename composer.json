@@ -1,12 +1,11 @@
 {
     "name": "orryv/x-string",
-    "description": "Toolkit for validating and restructuring JSON API responses using schema pipelines.",
+    "description": "Immutable, fluent string manipulation toolkit for PHP.",
     "type": "library",
     "license": "MIT",
     "require": {
         "php": "^8.1",
-        "paragonie/sodium_compat": "^2.4",
-        "psr/log": "^3.0"
+        "paragonie/sodium_compat": "^2.4"
     },
     "autoload": {
         "psr-4": {
@@ -21,7 +20,12 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5"
-
+    },
+    "suggest": {
+        "ext-intl": "Enables Normalizer support for Unicode normalization.",
+        "ext-mbstring": "Improves multibyte string handling performance.",
+        "ext-iconv": "Used as a fallback for character encoding conversions.",
+        "ext-openssl": "Required for AES-256-GCM encryption/decryption support."
     },
     "scripts": {
         "test": [
