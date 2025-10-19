@@ -6,6 +6,10 @@ length "mode" (bytes, codepoints, or graphemes), and the active encoding. Every
 operation returns a new instance so that strings can be safely composed without
 side effects.
 
+## TODO
+
+- [ ] html entity encode and decode methods
+
 ## Requirements
 
 - PHP 8.1 or higher.
