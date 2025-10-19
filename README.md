@@ -9,6 +9,7 @@ side effects.
 ## TODO
 
 - [ ] html entity encode and decode methods
+- [ ] toInt(), toFloat(), toBool() methods
 
 ## Requirements
 
