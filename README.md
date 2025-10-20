@@ -11,7 +11,7 @@ side effects.
 - [ ] html entity encode and decode methods: 
   - [ ] encodeHtmlEntities()
   - [ ] decodeHtmlEntities()
-- [ ] toInt(), toFloat(), toBool() methods
+- [ ] toInt(), toFloat(), toBool() methods, tobool translates 'true', 'yes', 'ok', ... and '1', '2', ... to true . And 'false', 'no', 'failed', ... and '0', '-1', ... to false.
 - [ ] methods to safely make folfder/file names for various filesystems (windows, linux, macos):
   - [ ] toWindowsFileName() // Also escapes reserved names like CON, PRN, AUX, NUL, COM1, LPT1, etc. and . and ..
   - [ ] toWindowsPath()
