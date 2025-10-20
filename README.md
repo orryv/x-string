@@ -8,8 +8,19 @@ side effects.
 
 ## TODO
 
-- [ ] html entity encode and decode methods
+- [ ] html entity encode and decode methods: 
+  - [ ] encodeHtmlEntities()
+  - [ ] decodeHtmlEntities()
 - [ ] toInt(), toFloat(), toBool() methods
+- [ ] methods to safely make folfder/file names for various filesystems (windows, linux, macos):
+  - [ ] toWindowsFileName() // Also escapes reserved names like CON, PRN, AUX, NUL, COM1, LPT1, etc. and . and ..
+  - [ ] toWindowsPath()
+  - [ ] toLinuxFileName()
+  - [ ] toLinuxPath()
+  - [ ] toMacOSFileName()
+  - [ ] toMacOSPath()
+  - [ ] toSafeFileName() // generic safe file name
+  - [ ] toSafePath() // generic safe path
 
 ## Requirements
 
