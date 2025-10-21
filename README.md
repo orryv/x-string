@@ -8,19 +8,23 @@ side effects.
 
 ## TODO
 
-- [ ] html entity encode and decode methods: 
-  - [ ] encodeHtmlEntities()
-  - [ ] decodeHtmlEntities()
-- [ ] toInt(), toFloat(), toBool() methods, tobool translates 'true', 'yes', 'ok', ... and '1', '2', ... to true . And 'false', 'no', 'failed', ... and '0', '-1', ... to false.
-- [ ] methods to safely make folfder/file names for various filesystems (windows, linux, macos):
-  - [ ] toWindowsFileName() // Also escapes reserved names like CON, PRN, AUX, NUL, COM1, LPT1, etc. and . and ..
-  - [ ] toWindowsPath()
-  - [ ] toLinuxFileName()
-  - [ ] toLinuxPath()
-  - [ ] toMacOSFileName()
-  - [ ] toMacOSPath()
-  - [ ] toSafeFileName() // generic safe file name
-  - [ ] toSafePath() // generic safe path
+- [x] html entity encode and decode methods: 
+  - [x] encodeHtmlEntities()
+  - [x] decodeHtmlEntities()
+- [x] toInt(), toFloat(), toBool() methods, tobool translates 'true', 'yes', 'ok', ... and '1', '2', ... to true . And 'false', 'no', 'failed', ... and '0', '-1', ... to false.
+- [x] methods to safely make folfder/file names for various filesystems (windows, linux, macos):
+  - [x] toWindowsFileName() // Also escapes reserved names like CON, PRN, AUX, NUL, COM1, LPT1, etc. and . and ..
+  - [x] toWindowsFolderName()
+  - [x] toWindowsPath()
+  - [x] toLinuxFileName()
+  - [x] toLinuxFolderName()
+  - [x] toLinuxPath()
+  - [x] toMacOSFileName()
+  - [x] toMacOSFolderName()
+  - [x] toMacOSPath()
+  - [x] toSafeFileName() // generic safe file name
+  - [x] toSafeFolderName() // generic safe folder name
+  - [x] toSafePath() // generic safe path
 
 ## Requirements
 
@@ -226,6 +230,9 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`countOccurrences`](docs/x-string/methods/countOccurrences.md) | 1.0 | `public function countOccurrences(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $search): int`<br>Count the number of occurrences of a substring in the string. If an array is provided it will act as an OR. |
 | [`matchAll`](docs/x-string/methods/matchAll.md) | 1.0 | `public function matchAll(Regex\|array<Regex> $pattern, false\|int $limit = false, array\|int\|null $flags = PREG_PATTERN_ORDER): array`<br>Match all occurrences of a regex pattern in the string. You can limit the number of matches by setting $limit. The $flags parameter determines the format of the returned array (default is PREG_PATTERN_ORDER). |
 | [`similarityScore`](docs/x-string/methods/similarityScore.md) | 1.0 | `public function similarityScore(Newline\|HtmlTag\|Regex\|string $comparison, string $algorithm = 'github-style', array $options = []): float`<br>Calculate a normalized similarity score between this string and another. Returns a ratio in **[0.0, 1.0]**.<br><br>**Algorithms:**<br>`levenshtein` — Minimum single‑char edits; normalized by max length (great for typos).<br>`damerau-levenshtein` — Levenshtein where adjacent transposition counts as one edit.<br>`jaro-winkler` — Rewards matching order and common prefixes; ideal for short strings/names.<br>`lcs-myers` — Longest Common Subsequence (Myers). Score = `2·LCS/(\|A\|+\|B\|)`; feels like diffs.<br>`ratcliff-obershelp` — “Gestalt”/SequenceMatcher-style recursive common-substring ratio.<br>`jaccard` — Token set overlap; ignores order and duplicates.<br>`sorensen-dice` — Token overlap coefficient; slightly more forgiving than Jaccard.<br>`cosine-ngrams` — Cosine similarity over character/word n‑grams (supports TF, TF‑IDF, etc.).<br>`monge-elkan` — Soft token matching using a secondary metric per token pair.<br>`soft-tfidf` — TF‑IDF weighted tokens with soft equality via a secondary metric and threshold.<br>`github-style` — Token‑level LCS ratio with a small common‑prefix boost for a diff‑like feel.<br><br>**Options:**<br>`granularity`: `token` \| `word` \| `character` (default: `token`; “token” = whitespace/punct split)<br>`case_sensitive`: `true` \| `false` (default: `false`)<br>`threshold`: float `0..1` (default: `0.0`; post‑filter on the final score)<br>`n`: int for n‑grams (default: `3`; used by `cosine-ngrams`)<br>`weighting`: `binary` \| `tf` \| `log` \| `augmented` \| `double-normalization-0.5` \| `tfidf` (default: `binary`; applies to `cosine-ngrams`/`soft-tfidf`)<br>`tokenizer`: callable to tokenize input (default: internal tokenizer based on `granularity`)<br>`secondary_metric`: algorithm used inside `monge-elkan`/`soft-tfidf` (default: `jaro-winkler`)<br>`tau`: float `0..1` soft-match threshold for `soft-tfidf`/`monge-elkan` (default: `0.9`)<br>`normalize_whitespace`: `true` \| `false` (default: `true`)<br>`strip_punctuation`: `true` \| `false` (default: `true` when `granularity` ≠ `character`) |
+| [`toInt`](docs/x-string/methods/toInt.md) | 1.0 | `public function toInt(): int`<br>Convert the current value to an integer, accepting optional underscores and floating-point notation (truncated toward zero) with range validation. |
+| [`toFloat`](docs/x-string/methods/toFloat.md) | 1.0 | `public function toFloat(): float`<br>Convert the current value to a finite floating-point number with underscore support. |
+| [`toBool`](docs/x-string/methods/toBool.md) | 1.0 | `public function toBool(): bool`<br>Interpret the string as a boolean using common affirmative/negative tokens and numeric semantics. |
 
 ### Encoding methods
 
@@ -265,11 +272,30 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | --- | --- | --- |
 | [`htmlEscape`](docs/x-string/methods/htmlEscape.md) | 1.0 | `public function htmlEscape(int $flags = ENT_QUOTES \| ENT_SUBSTITUTE \| ENT_HTML5, string $encoding = 'UTF-8'): self`<br>Escape HTML special characters in the string. You can specify flags and encoding. |
 | [`htmlUnescape`](docs/x-string/methods/htmlUnescape.md) | 1.0 | `public function htmlUnescape(): self`<br>Unescape HTML special characters in the string. |
+| [`encodeHtmlEntities`](docs/x-string/methods/encodeHtmlEntities.md) | 1.0 | `public function encodeHtmlEntities(int $flags = ENT_QUOTES \| ENT_SUBSTITUTE \| ENT_HTML401, ?string $encoding = null, bool $double_encode = false): self`<br>Encode the string with `htmlentities()`, allowing custom flags, encoding, and optional double encoding (disabled by default). |
+| [`decodeHtmlEntities`](docs/x-string/methods/decodeHtmlEntities.md) | 1.0 | `public function decodeHtmlEntities(int $flags = ENT_QUOTES \| ENT_HTML401, ?string $encoding = null): self`<br>Decode HTML entities back to characters while respecting flags and encoding. |
 | [`urlEncode`](docs/x-string/methods/urlEncode.md) | 1.0 | `public function urlEncode(bool $raw = false): self`<br>URL-encode the string. If $raw is true, it uses rawurlencode(). |
 | [`urlDecode`](docs/x-string/methods/urlDecode.md) | 1.0 | `public function urlDecode(bool $raw = false): self`<br>URL-decode the string. If $raw is true, it uses rawurldecode(). |
 | [`nl2br`](docs/x-string/methods/nl2br.md) | 1.0 | `public function nl2br(bool $is_xhtml = true): self`<br>Convert newlines to HTML `<br>` tags. If $is_xhtml is true, it uses <br /> for XHTML compliance. |
 | [`br2nl`](docs/x-string/methods/br2nl.md) | 1.0 | `public function br2nl(): self`<br>Convert HTML `<br>` tags to newlines. |
 
+### Filesystem helpers
+
+<!-- method-list -->
+| Method | Version | Signature & Description |
+| --- | --- | --- |
+| [`toWindowsFileName`](docs/x-string/methods/toWindowsFileName.md) | 1.0 | `public function toWindowsFileName(): self`<br>Sanitise the value into a Windows-compatible filename, escaping reserved device names and forbidden characters. |
+| [`toWindowsFolderName`](docs/x-string/methods/toWindowsFolderName.md) | 1.0 | `public function toWindowsFolderName(): self`<br>Generate a Windows-safe folder name by replacing forbidden characters, trimming trailing dots/spaces, and prefixing reserved names. |
+| [`toWindowsPath`](docs/x-string/methods/toWindowsPath.md) | 1.0 | `public function toWindowsPath(): self`<br>Normalise the string into a Windows path with safe segments, preserving drive letters and UNC prefixes. |
+| [`toLinuxFileName`](docs/x-string/methods/toLinuxFileName.md) | 1.0 | `public function toLinuxFileName(): self`<br>Produce a Linux-safe filename by removing control bytes and replacing forbidden separators. |
+| [`toLinuxFolderName`](docs/x-string/methods/toLinuxFolderName.md) | 1.0 | `public function toLinuxFolderName(): self`<br>Produce a Linux-safe folder name by stripping control bytes, replacing slashes, and collapsing special names. |
+| [`toLinuxPath`](docs/x-string/methods/toLinuxPath.md) | 1.0 | `public function toLinuxPath(): self`<br>Convert the value to a Linux path using cleaned segments joined by forward slashes. |
+| [`toMacOSFileName`](docs/x-string/methods/toMacOSFileName.md) | 1.0 | `public function toMacOSFileName(): self`<br>Return a macOS-friendly filename by replacing colons/slashes and collapsing special names. |
+| [`toMacOSFolderName`](docs/x-string/methods/toMacOSFolderName.md) | 1.0 | `public function toMacOSFolderName(): self`<br>Return a macOS-friendly folder name by replacing colons/slashes, stripping control characters, and normalising special names. |
+| [`toMacOSPath`](docs/x-string/methods/toMacOSPath.md) | 1.0 | `public function toMacOSPath(): self`<br>Normalise the value to a macOS path with cleaned segments and `/` separators. |
+| [`toSafeFileName`](docs/x-string/methods/toSafeFileName.md) | 1.0 | `public function toSafeFileName(): self`<br>Generate a conservative filename safe across Windows, Linux, and macOS. |
+| [`toSafeFolderName`](docs/x-string/methods/toSafeFolderName.md) | 1.0 | `public function toSafeFolderName(): self`<br>Generate a conservative folder name safe across Windows, Linux, and macOS. |
+| [`toSafePath`](docs/x-string/methods/toSafePath.md) | 1.0 | `public function toSafePath(): self`<br>Produce a portable path by sanitising each segment and joining with forward slashes. |
 
 ## Newline class methods
 

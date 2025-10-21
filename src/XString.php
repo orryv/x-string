@@ -12,6 +12,7 @@ use Orryv\XString\Regex;
 use Orryv\XString\Compute\Similarity;
 use Orryv\XString\Exceptions\EmptyCharacterSetException;
 use Orryv\XString\Exceptions\InvalidLengthException;
+use Orryv\XString\Exceptions\InvalidValueConversionException;
 use RuntimeException;
 use SodiumException;
 use Stringable;
@@ -24,6 +25,32 @@ final class XString implements Stringable
     private const DEFAULT_MODE = 'graphemes';
     /** @var array<int, string> */
     private const VALID_MODES = ['bytes', 'codepoints', 'graphemes'];
+    /** @var array<int, string> */
+    private const WINDOWS_RESERVED_NAMES = [
+        'CON',
+        'PRN',
+        'AUX',
+        'NUL',
+        'CLOCK$',
+        'COM1',
+        'COM2',
+        'COM3',
+        'COM4',
+        'COM5',
+        'COM6',
+        'COM7',
+        'COM8',
+        'COM9',
+        'LPT1',
+        'LPT2',
+        'LPT3',
+        'LPT4',
+        'LPT5',
+        'LPT6',
+        'LPT7',
+        'LPT8',
+        'LPT9',
+    ];
     /** @var array<string, string> */
     private const ASCII_FALLBACK_REPLACEMENTS = [
         'ß' => 'ss',
@@ -467,6 +494,211 @@ final class XString implements Stringable
         $slug = trim($slug, $normalized_separator . '.');
 
         return new self($slug, $this->mode, $this->encoding);
+    }
+
+    public function toWindowsFileName(): self
+    {
+        $sanitized = self::sanitizeWindowsSegment($this->value);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toWindowsFolderName(): self
+    {
+        $sanitized = self::sanitizeWindowsSegment($this->value);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toWindowsPath(): self
+    {
+        $value = str_replace('/', '\\', $this->value);
+        $has_trailing = preg_match('/[\\]$/', rtrim($value)) === 1;
+
+        $prefix = '';
+        $remaining = $value;
+        $is_unc = false;
+
+        if (str_starts_with($remaining, '\\\\')) {
+            $prefix = '\\\\';
+            $remaining = substr($remaining, 2);
+            $is_unc = true;
+        } elseif (preg_match('/^([A-Za-z]):/', $remaining, $drive_match) === 1) {
+            $prefix = strtoupper($drive_match[1]) . ':';
+            $remaining = substr($remaining, 2);
+            if (str_starts_with($remaining, '\\')) {
+                $prefix .= '\\';
+                $remaining = substr($remaining, 1);
+            }
+        }
+
+        $segments = preg_split('/\\+/', $remaining, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($segments)) {
+            $segments = [];
+        }
+
+        $sanitized_segments = [];
+        foreach ($segments as $segment) {
+            $sanitized_segments[] = self::sanitizeWindowsSegment($segment);
+        }
+
+        $result = $prefix;
+        if ($sanitized_segments !== []) {
+            if ($result !== '' && !str_ends_with($result, '\\')) {
+                $result .= '\\';
+            }
+            $result .= implode('\\', $sanitized_segments);
+        }
+
+        if ($result === '') {
+            $result = '_';
+        } elseif ($is_unc && $result === '\\\\') {
+            $result .= '_';
+        }
+
+        if ($has_trailing && !str_ends_with($result, '\\')) {
+            $result .= '\\';
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function toLinuxFileName(): self
+    {
+        $sanitized = self::sanitizeUnixSegment($this->value, false);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toLinuxFolderName(): self
+    {
+        $sanitized = self::sanitizeUnixSegment($this->value, false);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toLinuxPath(): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $is_absolute = str_starts_with($value, '/');
+        $has_trailing = preg_match('#/(?:\s*)$#', rtrim($value)) === 1;
+
+        $segments = preg_split('~\/+~', $value, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($segments)) {
+            $segments = [];
+        }
+
+        $sanitized_segments = [];
+        foreach ($segments as $segment) {
+            $sanitized_segments[] = self::sanitizeUnixSegment($segment, false);
+        }
+
+        $result = $is_absolute ? '/' : '';
+        if ($sanitized_segments !== []) {
+            $result .= implode('/', $sanitized_segments);
+        }
+
+        if ($result === '') {
+            $result = '_';
+        }
+
+        if ($has_trailing && !str_ends_with($result, '/')) {
+            $result .= '/';
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function toMacOSFileName(): self
+    {
+        $sanitized = self::sanitizeUnixSegment($this->value, true);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toMacOSFolderName(): self
+    {
+        $sanitized = self::sanitizeUnixSegment($this->value, true);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toMacOSPath(): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $is_absolute = str_starts_with($value, '/');
+        $has_trailing = preg_match('#/(?:\s*)$#', rtrim($value)) === 1;
+
+        $segments = preg_split('~\/+~', $value, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($segments)) {
+            $segments = [];
+        }
+
+        $sanitized_segments = [];
+        foreach ($segments as $segment) {
+            $sanitized_segments[] = self::sanitizeUnixSegment($segment, true);
+        }
+
+        $result = $is_absolute ? '/' : '';
+        if ($sanitized_segments !== []) {
+            $result .= implode('/', $sanitized_segments);
+        }
+
+        if ($result === '') {
+            $result = '_';
+        }
+
+        if ($has_trailing && !str_ends_with($result, '/')) {
+            $result .= '/';
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function toSafeFileName(): self
+    {
+        $sanitized = self::sanitizeGenericSegment($this->value);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toSafeFolderName(): self
+    {
+        $sanitized = self::sanitizeGenericSegment($this->value);
+
+        return new self($sanitized, $this->mode, $this->encoding);
+    }
+
+    public function toSafePath(): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $is_absolute = str_starts_with($value, '/');
+        $has_trailing = preg_match('#/(?:\s*)$#', rtrim($value)) === 1;
+
+        $segments = preg_split('~\/+~', $value, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($segments)) {
+            $segments = [];
+        }
+
+        $sanitized_segments = [];
+        foreach ($segments as $segment) {
+            $sanitized_segments[] = self::sanitizeGenericSegment($segment);
+        }
+
+        $result = $is_absolute ? '/' : '';
+        if ($sanitized_segments !== []) {
+            $result .= implode('/', $sanitized_segments);
+        }
+
+        if ($result === '') {
+            $result = '_';
+        }
+
+        if ($has_trailing && !str_ends_with($result, '/')) {
+            $result .= '/';
+        }
+
+        return new self($result, $this->mode, $this->encoding);
     }
 
     public function insertAtInterval(Newline|HtmlTag|Regex|string $insert, int $interval): self
@@ -2417,6 +2649,169 @@ final class XString implements Stringable
         $converted = self::applyAsciiTransliterationFallback($converted, $this->value, $source);
 
         return new self($converted, $this->mode, 'ASCII');
+    }
+
+    public function encodeHtmlEntities(
+        int $flags = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401,
+        ?string $encoding = null,
+        bool $double_encode = false
+    ): self {
+        $target_encoding = $encoding !== null
+            ? self::normalizeEncoding($encoding)
+            : $this->encoding;
+
+        $encoded = htmlentities($this->value, $flags, $target_encoding, $double_encode);
+
+        return new self($encoded, $this->mode, $target_encoding);
+    }
+
+    public function decodeHtmlEntities(int $flags = ENT_QUOTES | ENT_HTML401, ?string $encoding = null): self
+    {
+        $target_encoding = $encoding !== null
+            ? self::normalizeEncoding($encoding)
+            : $this->encoding;
+
+        $decoded = html_entity_decode($this->value, $flags, $target_encoding);
+
+        return new self($decoded, $this->mode, $target_encoding);
+    }
+
+    public function toInt(): int
+    {
+        $normalized = str_replace('_', '', trim($this->value));
+
+        if ($normalized === '') {
+            throw new InvalidValueConversionException('Cannot convert an empty string to an integer.');
+        }
+
+        if (preg_match('/^[+-]?\d+$/', $normalized) === 1) {
+            $sign = 1;
+            if ($normalized[0] === '+') {
+                $digits = substr($normalized, 1);
+            } elseif ($normalized[0] === '-') {
+                $sign = -1;
+                $digits = substr($normalized, 1);
+            } else {
+                $digits = $normalized;
+            }
+
+            $digits = ltrim($digits, '0');
+            if ($digits === '') {
+                $digits = '0';
+            }
+
+            if ($sign === 1) {
+                $max_digits = (string) PHP_INT_MAX;
+                if (strlen($digits) > strlen($max_digits) || (strlen($digits) === strlen($max_digits) && strcmp($digits, $max_digits) > 0)) {
+                    throw new InvalidValueConversionException('Integer value exceeds the maximum supported range.');
+                }
+            } else {
+                $min_digits = ltrim((string) PHP_INT_MIN, '-');
+                if (strlen($digits) > strlen($min_digits) || (strlen($digits) === strlen($min_digits) && strcmp($digits, $min_digits) > 0)) {
+                    throw new InvalidValueConversionException('Integer value exceeds the minimum supported range.');
+                }
+            }
+
+            return (int) $normalized;
+        }
+
+        if (!is_numeric($normalized)) {
+            throw new InvalidValueConversionException('Value is not a valid integer representation.');
+        }
+
+        $float_value = (float) $normalized;
+        if (!is_finite($float_value)) {
+            throw new InvalidValueConversionException('Float conversion resulted in a non-finite value.');
+        }
+
+        if ($float_value > PHP_INT_MAX || $float_value < PHP_INT_MIN) {
+            throw new InvalidValueConversionException('Integer value exceeds the supported range.');
+        }
+
+        return (int) $float_value;
+    }
+
+    public function toFloat(): float
+    {
+        $normalized = str_replace('_', '', trim($this->value));
+
+        if ($normalized === '') {
+            throw new InvalidValueConversionException('Cannot convert an empty string to a float.');
+        }
+
+        if (!is_numeric($normalized)) {
+            throw new InvalidValueConversionException('Value is not a valid floating point representation.');
+        }
+
+        $float_value = (float) $normalized;
+        if (!is_finite($float_value)) {
+            throw new InvalidValueConversionException('Float conversion resulted in a non-finite value.');
+        }
+
+        return $float_value;
+    }
+
+    public function toBool(): bool
+    {
+        $normalized = trim($this->value);
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        $lower = strtolower($normalized);
+
+        $true_values = [
+            '1',
+            'true',
+            't',
+            'yes',
+            'y',
+            'yeah',
+            'yup',
+            'ok',
+            'okay',
+            'on',
+            'enable',
+            'enabled',
+            'active',
+            'pass',
+            'passed',
+            'success',
+        ];
+
+        $false_values = [
+            '0',
+            'false',
+            'f',
+            'no',
+            'n',
+            'off',
+            'disable',
+            'disabled',
+            'inactive',
+            'fail',
+            'failed',
+            'ko',
+            'null',
+            'none',
+            '-1',
+        ];
+
+        if (in_array($lower, $true_values, true)) {
+            return true;
+        }
+
+        if (in_array($lower, $false_values, true)) {
+            return false;
+        }
+
+        $numeric_candidate = str_replace('_', '', $normalized);
+        if (is_numeric($numeric_candidate)) {
+            return (float) $numeric_candidate > 0.0;
+        }
+
+        throw new InvalidValueConversionException('Value cannot be interpreted as a boolean.');
     }
 
     public function base64Encode(): self
@@ -5266,6 +5661,81 @@ final class XString implements Stringable
         }
 
         return $normalized;
+    }
+
+    private static function sanitizeWindowsSegment(string $segment): string
+    {
+        $segment = str_replace("\0", '', $segment);
+
+        $replaced = preg_replace('~[<>:"/\\\\|?*]~', '_', $segment);
+        if (is_string($replaced)) {
+            $segment = $replaced;
+        }
+
+        $removed_controls = preg_replace('~[\x00-\x1F\x7F]~', '', $segment);
+        if (is_string($removed_controls)) {
+            $segment = $removed_controls;
+        }
+
+        $segment = trim($segment, " .");
+
+        if ($segment === '' || $segment === '.' || $segment === '..') {
+            $segment = '_';
+        }
+
+        $upper = strtoupper($segment);
+        if (in_array($upper, self::WINDOWS_RESERVED_NAMES, true)) {
+            $segment = '_' . $segment;
+        }
+
+        if (strlen($segment) > 255) {
+            $segment = substr($segment, 0, 255);
+        }
+
+        return $segment;
+    }
+
+    private static function sanitizeUnixSegment(string $segment, bool $macos): string
+    {
+        $segment = str_replace("\0", '', $segment);
+        $segment = str_replace('\\', '_', $segment);
+        $segment = str_replace('/', '_', $segment);
+        if ($macos) {
+            $segment = str_replace(':', '_', $segment);
+        }
+
+        $removed_controls = preg_replace('~[\x00-\x1F\x7F]~', '', $segment);
+        if (is_string($removed_controls)) {
+            $segment = $removed_controls;
+        }
+
+        if (trim($segment) === '' || $segment === '.' || $segment === '..') {
+            $segment = '_';
+        }
+
+        if (strlen($segment) > 255) {
+            $segment = substr($segment, 0, 255);
+        }
+
+        return $segment;
+    }
+
+    private static function sanitizeGenericSegment(string $segment): string
+    {
+        $segment = self::sanitizeWindowsSegment($segment);
+        $segment = str_replace(':', '_', $segment);
+        $segment = str_replace('/', '_', $segment);
+        $segment = str_replace('\\', '_', $segment);
+
+        if (trim($segment) === '') {
+            $segment = '_';
+        }
+
+        if (strlen($segment) > 255) {
+            $segment = substr($segment, 0, 255);
+        }
+
+        return $segment;
     }
 
     private function graphemeLengthOrFallback(): int
