@@ -43,6 +43,7 @@ target encoding, or opt into double encoding explicitly when needed.
 ## Important notes and considerations
 
 - **Respects the active encoding.** When `$encoding` is omitted the current instance encoding is reused.
+- **Handles transcoding automatically.** Overrides temporarily convert the value so manual encoding swaps aren't necessary.
 - **Customise encoding semantics.** Provide flags/encoding to align with HTML5, XML, or legacy HTML behaviours.
 - **Double encoding disabled by default.** Existing entities remain untouched unless `$double_encode` is `true`.
 - **Immutable operation.** Returns a new `XString`—the original value is never modified.
@@ -107,13 +108,13 @@ $result = $value->encodeHtmlEntities(ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401, 
 
 ### Specify custom flags and encoding
 
-Convert the instance to ISO-8859-1 first so the override applies to the encoded byte sequence.
+Override the encoding directly—`XString` will handle any required conversions.
 
 <!-- test:encode-html-entities-flags -->
 ```php
 use Orryv\XString;
 
-$value = XString::new("Café")->toEncoding('ISO-8859-1');
+$value = XString::new("Café");
 $result = $value->encodeHtmlEntities(ENT_NOQUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');
 
 #Test: self::assertSame('Caf&eacute;', (string) $result);

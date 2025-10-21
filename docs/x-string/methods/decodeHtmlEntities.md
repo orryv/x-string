@@ -37,6 +37,7 @@ conversion.
 ## Important notes and considerations
 
 - **Encoding-aware.** Defaults to the current instance encoding unless explicitly overridden.
+- **Automatic transcoding.** Overrides convert the value internally so no manual re-encoding is required.
 - **Selective decoding.** Use `$flags` to restrict the set of entities that are translated back to characters.
 - **Immutable result.** Returns a new `XString`, leaving the original untouched.
 
@@ -87,16 +88,14 @@ $result = $value->decodeHtmlEntities(ENT_NOQUOTES | ENT_HTML5);
 
 ### Respect a custom encoding
 
-Convert to ISO-8859-1 before decoding, then back to UTF-8 afterwards so the override round-trips predictably.
+Override the decoding encoding directly—the string is converted internally as needed.
 
 <!-- test:decode-html-entities-encoding -->
 ```php
 use Orryv\XString;
 
-$value = XString::new('Espa&ntilde;a')->toEncoding('ISO-8859-1');
-$result = $value
-    ->decodeHtmlEntities(ENT_QUOTES | ENT_HTML401, 'ISO-8859-1')
-    ->toEncoding('UTF-8');
+$value = XString::new('Espa&ntilde;a');
+$result = $value->decodeHtmlEntities(ENT_QUOTES | ENT_HTML401, 'ISO-8859-1');
 
 #Test: self::assertSame('España', (string) $result);
 ```

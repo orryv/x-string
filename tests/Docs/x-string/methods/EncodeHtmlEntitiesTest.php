@@ -32,7 +32,7 @@ final class EncodeHtmlEntitiesTest extends TestCase
 
     public function testEncodeHtmlEntitiesFlags(): void
     {
-        $value = XString::new("Café")->toEncoding('ISO-8859-1');
+        $value = XString::new("Café");
         $result = $value->encodeHtmlEntities(ENT_NOQUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');
         self::assertSame('Caf&eacute;', (string) $result);
     }

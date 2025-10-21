@@ -2660,9 +2660,17 @@ final class XString implements Stringable
             ? self::normalizeEncoding($encoding)
             : $this->encoding;
 
-        $encoded = htmlentities($this->value, $flags, $target_encoding, $double_encode);
+        $value = $target_encoding === $this->encoding
+            ? $this->value
+            : self::convertEncoding($this->value, $target_encoding, $this->encoding);
 
-        return new self($encoded, $this->mode, $target_encoding);
+        $encoded = htmlentities($value, $flags, $target_encoding, $double_encode);
+
+        if ($target_encoding !== $this->encoding) {
+            $encoded = self::convertEncoding($encoded, $this->encoding, $target_encoding);
+        }
+
+        return new self($encoded, $this->mode, $this->encoding);
     }
 
     public function decodeHtmlEntities(int $flags = ENT_QUOTES | ENT_HTML401, ?string $encoding = null): self
@@ -2671,9 +2679,17 @@ final class XString implements Stringable
             ? self::normalizeEncoding($encoding)
             : $this->encoding;
 
-        $decoded = html_entity_decode($this->value, $flags, $target_encoding);
+        if ($target_encoding === $this->encoding) {
+            $decoded = html_entity_decode($this->value, $flags, $target_encoding);
 
-        return new self($decoded, $this->mode, $target_encoding);
+            return new self($decoded, $this->mode, $this->encoding);
+        }
+
+        $converted = self::convertEncoding($this->value, $target_encoding, $this->encoding);
+        $decoded = html_entity_decode($converted, $flags, $target_encoding);
+        $decoded = self::convertEncoding($decoded, $this->encoding, $target_encoding);
+
+        return new self($decoded, $this->mode, $this->encoding);
     }
 
     public function toInt(): int
