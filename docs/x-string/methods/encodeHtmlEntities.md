@@ -107,11 +107,13 @@ $result = $value->encodeHtmlEntities(ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401, 
 
 ### Specify custom flags and encoding
 
+Convert the instance to ISO-8859-1 first so the override applies to the encoded byte sequence.
+
 <!-- test:encode-html-entities-flags -->
 ```php
 use Orryv\XString;
 
-$value = XString::new("Café");
+$value = XString::new("Café")->toEncoding('ISO-8859-1');
 $result = $value->encodeHtmlEntities(ENT_NOQUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');
 
 #Test: self::assertSame('Caf&eacute;', (string) $result);

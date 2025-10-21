@@ -513,7 +513,7 @@ final class XString implements Stringable
     public function toWindowsPath(): self
     {
         $value = str_replace('/', '\\', $this->value);
-        $has_trailing = preg_match('/[\\]$/', rtrim($value)) === 1;
+        $has_trailing = preg_match('/\\\\$/', rtrim($value)) === 1;
 
         $prefix = '';
         $remaining = $value;
@@ -532,7 +532,7 @@ final class XString implements Stringable
             }
         }
 
-        $segments = preg_split('/\\+/', $remaining, -1, PREG_SPLIT_NO_EMPTY);
+        $segments = preg_split('/[\\\\]+/', $remaining, -1, PREG_SPLIT_NO_EMPTY);
         if (!is_array($segments)) {
             $segments = [];
         }

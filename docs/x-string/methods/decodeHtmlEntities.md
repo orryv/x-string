@@ -87,12 +87,16 @@ $result = $value->decodeHtmlEntities(ENT_NOQUOTES | ENT_HTML5);
 
 ### Respect a custom encoding
 
+Convert to ISO-8859-1 before decoding, then back to UTF-8 afterwards so the override round-trips predictably.
+
 <!-- test:decode-html-entities-encoding -->
 ```php
 use Orryv\XString;
 
-$value = XString::new('Espa&ntilde;a');
-$result = $value->decodeHtmlEntities(ENT_QUOTES | ENT_HTML401, 'ISO-8859-1');
+$value = XString::new('Espa&ntilde;a')->toEncoding('ISO-8859-1');
+$result = $value
+    ->decodeHtmlEntities(ENT_QUOTES | ENT_HTML401, 'ISO-8859-1')
+    ->toEncoding('UTF-8');
 
 #Test: self::assertSame('España', (string) $result);
 ```
