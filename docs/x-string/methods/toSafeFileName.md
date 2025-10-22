@@ -28,7 +28,7 @@ public function toSafeFileName(): self
 
 ## Description
 
-Generate a conservative, cross-platform safe filename by combining the sanitisation rules of Windows, Linux, and macOS.
+Generate a conservative, cross-platform safe filename by combining the sanitisation rules of Windows, Unix-like systems, and macOS.
 Illegal characters are replaced with underscores, reserved device names are escaped, colons/slashes/backslashes are neutralised,
 and empty values become `_`.
 
@@ -98,4 +98,4 @@ $result = $value->toSafeFileName();
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::toSafeFileName` | `public function toSafeFileName(): self` — Produce a conservative filename safe across Windows, Linux, and macOS by neutralising reserved characters/names and collapsing empty results to underscores. |
+| `XString::toSafeFileName` | `public function toSafeFileName(): self` — Produce a conservative filename safe across Windows, Unix-like systems, and macOS by neutralising reserved characters/names and collapsing empty results to underscores. |

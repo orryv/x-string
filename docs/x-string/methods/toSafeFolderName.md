@@ -29,7 +29,7 @@ public function toSafeFolderName(): self
 
 ## Description
 
-Generate a conservative, cross-platform safe folder name by combining the sanitisation rules of Windows, Linux, and macOS.
+Generate a conservative, cross-platform safe folder name by combining the sanitisation rules of Windows, Unix-like systems, and macOS.
 Illegal characters are replaced with underscores, reserved device names are escaped, colons/slashes/backslashes are neutralised,
 and empty values become `_`.
 
@@ -111,4 +111,4 @@ $value->toSafeFolderName();
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::toSafeFolderName` | `public function toSafeFolderName(): self` — Produce a conservative folder name safe across Windows, Linux, and macOS by neutralising reserved characters/names and collapsing empty results to underscores. |
+| `XString::toSafeFolderName` | `public function toSafeFolderName(): self` — Produce a conservative folder name safe across Windows, Unix-like systems, and macOS by neutralising reserved characters/names and collapsing empty results to underscores. |

@@ -7,40 +7,40 @@ namespace Orryv\XArray\Tests\Docs\XString\Methods;
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 
-final class ToLinuxFolderNameTest extends TestCase
+final class ToUnixFolderNameTest extends TestCase
 {
-    public function testLinuxFolderSlashes(): void
+    public function testUnixFolderSlashes(): void
     {
         $value = XString::new('var/log');
-        $result = $value->toLinuxFolderName();
+        $result = $value->toUnixFolderName();
         self::assertSame('var_log', (string) $result);
     }
 
-    public function testLinuxFolderReserved(): void
+    public function testUnixFolderReserved(): void
     {
         $value = XString::new('.');
-        $result = $value->toLinuxFolderName();
+        $result = $value->toUnixFolderName();
         self::assertSame('_', (string) $result);
     }
 
-    public function testLinuxFolderWhitespace(): void
+    public function testUnixFolderWhitespace(): void
     {
         $value = XString::new("   ");
-        $result = $value->toLinuxFolderName();
+        $result = $value->toUnixFolderName();
         self::assertSame('_', (string) $result);
     }
 
-    public function testLinuxFolderUnicode(): void
+    public function testUnixFolderUnicode(): void
     {
         $value = XString::new('données');
-        $result = $value->toLinuxFolderName();
+        $result = $value->toUnixFolderName();
         self::assertSame('données', (string) $result);
     }
 
-    public function testLinuxFolderImmutability(): void
+    public function testUnixFolderImmutability(): void
     {
         $value = XString::new('tmp/cache');
-        $value->toLinuxFolderName();
+        $value->toUnixFolderName();
         self::assertSame('tmp/cache', (string) $value);
     }
 

@@ -1,7 +1,7 @@
-# XString::toLinuxFolderName()
+# XString::toUnixFolderName()
 
 ## Table of Contents
-- [XString::toLinuxFolderName()](#xstringtolinuxfoldername)
+- [XString::toUnixFolderName()](#xstringtounixfoldername)
   - [Table of Contents](#table-of-contents)
   - [Technical details](#technical-details)
   - [Description](#description)
@@ -20,7 +20,7 @@
 **Signature:**
 
 ```php
-public function toLinuxFolderName(): self
+public function toUnixFolderName(): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -29,7 +29,7 @@ public function toLinuxFolderName(): self
 
 ## Description
 
-Return a directory name that is safe on Linux/Unix filesystems by removing the null byte, replacing directory separators,
+Return a directory name that is safe on Unix-style filesystems by removing the null byte, replacing directory separators,
 and collapsing reserved names (`''`, `'.'`, `'..'`) into underscores.
 
 ## Important notes and considerations
@@ -42,66 +42,66 @@ and collapsing reserved names (`''`, `'.'`, `'..'`) into underscores.
 
 | Return Type | Immutable (returns clone) | Description |
 | --- | --- | --- |
-| `self` | ✓ | Linux-safe folder name. |
+| `self` | ✓ | Unix-safe folder name. |
 
 ## Examples
 
 ### Replace forward slashes
 
-<!-- test:linux-folder-slashes -->
+<!-- test:unix-folder-slashes -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('var/log');
-$result = $value->toLinuxFolderName();
+$result = $value->toUnixFolderName();
 
 #Test: self::assertSame('var_log', (string) $result);
 ```
 
 ### Collapse reserved directory markers
 
-<!-- test:linux-folder-reserved -->
+<!-- test:unix-folder-reserved -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('.');
-$result = $value->toLinuxFolderName();
+$result = $value->toUnixFolderName();
 
 #Test: self::assertSame('_', (string) $result);
 ```
 
 ### Whitespace-only names become underscores
 
-<!-- test:linux-folder-whitespace -->
+<!-- test:unix-folder-whitespace -->
 ```php
 use Orryv\XString;
 
 $value = XString::new("   ");
-$result = $value->toLinuxFolderName();
+$result = $value->toUnixFolderName();
 
 #Test: self::assertSame('_', (string) $result);
 ```
 
 ### Unicode characters are preserved
 
-<!-- test:linux-folder-unicode -->
+<!-- test:unix-folder-unicode -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('données');
-$result = $value->toLinuxFolderName();
+$result = $value->toUnixFolderName();
 
 #Test: self::assertSame('données', (string) $result);
 ```
 
 ### Original instance remains unchanged
 
-<!-- test:linux-folder-immutability -->
+<!-- test:unix-folder-immutability -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('tmp/cache');
-$value->toLinuxFolderName();
+$value->toUnixFolderName();
 
 #Test: self::assertSame('tmp/cache', (string) $value);
 ```
@@ -110,4 +110,4 @@ $value->toLinuxFolderName();
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::toLinuxFolderName` | `public function toLinuxFolderName(): self` — Produce a Linux-safe folder name by stripping control bytes, replacing slashes, and normalising empty/special names to underscores. |
+| `XString::toUnixFolderName` | `public function toUnixFolderName(): self` — Produce a Unix-safe folder name by stripping control bytes, replacing slashes, and normalising empty/special names to underscores. |

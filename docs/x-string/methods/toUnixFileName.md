@@ -1,7 +1,7 @@
-# XString::toLinuxFileName()
+# XString::toUnixFileName()
 
 ## Table of Contents
-- [XString::toLinuxFileName()](#xstringtolinuxfilename)
+- [XString::toUnixFileName()](#xstringtounixfilename)
   - [Table of Contents](#table-of-contents)
   - [Technical details](#technical-details)
   - [Description](#description)
@@ -19,7 +19,7 @@
 **Signature:**
 
 ```php
-public function toLinuxFileName(): self
+public function toUnixFileName(): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -28,7 +28,7 @@ public function toLinuxFileName(): self
 
 ## Description
 
-Return a filename that is safe on Linux/Unix filesystems by removing the null byte, replacing directory separators,
+Return a filename that is safe on Unix-style filesystems (Linux, BSD, etc.) by removing the null byte, replacing directory separators,
 and collapsing special names (`''`, `'.'`, `'..'`) into underscores.
 
 ## Important notes and considerations
@@ -41,54 +41,54 @@ and collapsing special names (`''`, `'.'`, `'..'`) into underscores.
 
 | Return Type | Immutable (returns clone) | Description |
 | --- | --- | --- |
-| `self` | ✓ | Linux-safe filename. |
+| `self` | ✓ | Unix-safe filename. |
 
 ## Examples
 
 ### Replace forward slashes
 
-<!-- test:linux-filename-slashes -->
+<!-- test:unix-filename-slashes -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('logs/error.log');
-$result = $value->toLinuxFileName();
+$result = $value->toUnixFileName();
 
 #Test: self::assertSame('logs_error.log', (string) $result);
 ```
 
 ### Collapse empty or special names
 
-<!-- test:linux-filename-special -->
+<!-- test:unix-filename-special -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('..');
-$result = $value->toLinuxFileName();
+$result = $value->toUnixFileName();
 
 #Test: self::assertSame('_', (string) $result);
 ```
 
 ### Whitespace-only names become underscores
 
-<!-- test:linux-filename-whitespace -->
+<!-- test:unix-filename-whitespace -->
 ```php
 use Orryv\XString;
 
 $value = XString::new("   ");
-$result = $value->toLinuxFileName();
+$result = $value->toUnixFileName();
 
 #Test: self::assertSame('_', (string) $result);
 ```
 
 ### Unicode characters are preserved
 
-<!-- test:linux-filename-unicode -->
+<!-- test:unix-filename-unicode -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('résumé.txt');
-$result = $value->toLinuxFileName();
+$result = $value->toUnixFileName();
 
 #Test: self::assertSame('résumé.txt', (string) $result);
 ```
@@ -97,4 +97,4 @@ $result = $value->toLinuxFileName();
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::toLinuxFileName` | `public function toLinuxFileName(): self` — Produce a Linux-safe filename by stripping control bytes, replacing slashes, and normalising empty/special names to underscores. |
+| `XString::toUnixFileName` | `public function toUnixFileName(): self` — Produce a Unix-safe filename by stripping control bytes, replacing slashes, and normalising empty/special names to underscores. |
