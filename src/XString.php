@@ -5883,9 +5883,24 @@ final class XString implements Stringable
         for ($index = 0; $index < $count; $index++) {
             $char = $characters[$index];
 
-            if (!$double_encode && $char === '%' && self::isPercentEncodedSequence($characters, $index)) {
-                $encoded .= '%' . $characters[$index + 1] . $characters[$index + 2];
+            if ($char === '%' && self::isPercentEncodedSequence($characters, $index)) {
+                $first = strtoupper($characters[$index + 1]);
+                $second = strtoupper($characters[$index + 2]);
+
+                $encoded .= $double_encode
+                    ? '%25' . $first . $second
+                    : '%' . $first . $second;
+
                 $index += 2;
+
+                if ($double_encode
+                    && isset($characters[$index + 1], $characters[$index + 2])
+                    && strtoupper($characters[$index + 1]) === $first
+                    && strtoupper($characters[$index + 2]) === $second
+                ) {
+                    $index += 2;
+                }
+
                 continue;
             }
 
@@ -5909,7 +5924,7 @@ final class XString implements Stringable
             }
 
             $encoded .= $should_encode
-                ? self::percentEncodeBytes($char)
+                ? self::percentEncodeBytes($char, $double_encode)
                 : $char;
         }
 
@@ -6032,9 +6047,24 @@ final class XString implements Stringable
         for ($index = 0; $index < $count; $index++) {
             $char = $characters[$index];
 
-            if (!$double_encode && $char === '%' && self::isPercentEncodedSequence($characters, $index)) {
-                $encoded .= '%' . $characters[$index + 1] . $characters[$index + 2];
+            if ($char === '%' && self::isPercentEncodedSequence($characters, $index)) {
+                $first = strtoupper($characters[$index + 1]);
+                $second = strtoupper($characters[$index + 2]);
+
+                $encoded .= $double_encode
+                    ? '%25' . $first . $second
+                    : '%' . $first . $second;
+
                 $index += 2;
+
+                if ($double_encode
+                    && isset($characters[$index + 1], $characters[$index + 2])
+                    && strtoupper($characters[$index + 1]) === $first
+                    && strtoupper($characters[$index + 2]) === $second
+                ) {
+                    $index += 2;
+                }
+
                 continue;
             }
 
@@ -6045,7 +6075,7 @@ final class XString implements Stringable
             }
 
             $encoded .= $should_encode
-                ? self::percentEncodeBytes($char)
+                ? self::percentEncodeBytes($char, $double_encode)
                 : $char;
         }
 
@@ -6185,7 +6215,19 @@ final class XString implements Stringable
             return false;
         }
 
-        return ctype_xdigit($first) && ctype_xdigit($second);
+        return self::isUppercaseHexDigit($first) && self::isUppercaseHexDigit($second);
+    }
+
+    private static function isUppercaseHexDigit(string $char): bool
+    {
+        if ($char === '') {
+            return false;
+        }
+
+        $code = ord($char);
+
+        return ($code >= 0x30 && $code <= 0x39)
+            || ($code >= 0x41 && $code <= 0x46);
     }
 
     private static function decodeGenericPathString(string $path): string
@@ -6218,7 +6260,7 @@ final class XString implements Stringable
         return $result;
     }
 
-    private static function percentEncodeBytes(string $char): string
+    private static function percentEncodeBytes(string $char, bool $double_encode): string
     {
         if ($char === '') {
             return '';
@@ -6228,6 +6270,10 @@ final class XString implements Stringable
         $encoded = '';
         foreach ($bytes as $byte) {
             $encoded .= sprintf('%%%02X', ord($byte));
+        }
+
+        if ($double_encode && $char !== '/') {
+            $encoded = str_replace('%', '%25', $encoded);
         }
 
         return $encoded;
