@@ -7,33 +7,33 @@ namespace Orryv\XArray\Tests\Docs\XString\Methods;
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 
-final class ToLinuxPathTest extends TestCase
+final class ToUnixPathTest extends TestCase
 {
-    public function testLinuxPathMixed(): void
+    public function testUnixPathMixed(): void
     {
         $value = XString::new('logs\\2024/errors');
-        $result = $value->toLinuxPath();
+        $result = $value->toUnixPath();
         self::assertSame('logs/2024/errors', (string) $result);
     }
 
-    public function testLinuxPathSpecial(): void
+    public function testUnixPathSpecial(): void
     {
         $value = XString::new('/etc/../passwd');
-        $result = $value->toLinuxPath();
+        $result = $value->toUnixPath();
         self::assertSame('/etc/_/passwd', (string) $result);
     }
 
-    public function testLinuxPathTrailing(): void
+    public function testUnixPathTrailing(): void
     {
         $value = XString::new('/var/log/');
-        $result = $value->toLinuxPath();
+        $result = $value->toUnixPath();
         self::assertSame('/var/log/', (string) $result);
     }
 
-    public function testLinuxPathEmpty(): void
+    public function testUnixPathEmpty(): void
     {
         $value = XString::new('   ');
-        $result = $value->toLinuxPath();
+        $result = $value->toUnixPath();
         self::assertSame('_', (string) $result);
     }
 

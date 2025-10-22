@@ -1,7 +1,7 @@
-# XString::toLinuxPath()
+# XString::toUnixPath()
 
 ## Table of Contents
-- [XString::toLinuxPath()](#xstringtolinuxpath)
+- [XString::toUnixPath()](#xstringtounixpath)
   - [Table of Contents](#table-of-contents)
   - [Technical details](#technical-details)
   - [Description](#description)
@@ -19,7 +19,7 @@
 **Signature:**
 
 ```php
-public function toLinuxPath(): self
+public function toUnixPath(): self
 ```
 
 | Namespace | Instance / Static | Immutable (returns clone) | Public / Private / Protected |
@@ -28,7 +28,7 @@ public function toLinuxPath(): self
 
 ## Description
 
-Build a Linux/Unix safe path by splitting on `/` or `\`, sanitising each segment with [`toLinuxFileName()`](toLinuxFileName.md),
+Build a Unix-safe path by splitting on `/` or `\`, sanitising each segment with [`toUnixFileName()`](toUnixFileName.md),
 and rejoining with forward slashes. Absolute paths retain their leading `/` and optional trailing slash.
 
 ## Important notes and considerations
@@ -41,54 +41,54 @@ and rejoining with forward slashes. Absolute paths retain their leading `/` and 
 
 | Return Type | Immutable (returns clone) | Description |
 | --- | --- | --- |
-| `self` | ✓ | Linux-compatible path string. |
+| `self` | ✓ | Unix-compatible path string. |
 
 ## Examples
 
 ### Normalise mixed separators
 
-<!-- test:linux-path-mixed -->
+<!-- test:unix-path-mixed -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('logs\\2024/errors');
-$result = $value->toLinuxPath();
+$result = $value->toUnixPath();
 
 #Test: self::assertSame('logs/2024/errors', (string) $result);
 ```
 
 ### Sanitise special segments
 
-<!-- test:linux-path-special -->
+<!-- test:unix-path-special -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('/etc/../passwd');
-$result = $value->toLinuxPath();
+$result = $value->toUnixPath();
 
 #Test: self::assertSame('/etc/_/passwd', (string) $result);
 ```
 
 ### Preserve absolute roots and trailing slashes
 
-<!-- test:linux-path-trailing -->
+<!-- test:unix-path-trailing -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('/var/log/');
-$result = $value->toLinuxPath();
+$result = $value->toUnixPath();
 
 #Test: self::assertSame('/var/log/', (string) $result);
 ```
 
 ### Fallback for empty values
 
-<!-- test:linux-path-empty -->
+<!-- test:unix-path-empty -->
 ```php
 use Orryv\XString;
 
 $value = XString::new('   ');
-$result = $value->toLinuxPath();
+$result = $value->toUnixPath();
 
 #Test: self::assertSame('_', (string) $result);
 ```
@@ -97,4 +97,4 @@ $result = $value->toLinuxPath();
 
 | Method | Signature & Description |
 | --- | --- |
-| `XString::toLinuxPath` | `public function toLinuxPath(): self` — Normalise a path for Linux by cleaning each segment and rejoining with forward slashes, preserving absolute roots and trailing separators. |
+| `XString::toUnixPath` | `public function toUnixPath(): self` — Normalise a path for Unix by cleaning each segment and rejoining with forward slashes, preserving absolute roots and trailing separators. |

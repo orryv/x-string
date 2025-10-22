@@ -563,21 +563,64 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function toLinuxFileName(): self
+    public function encodeWindowsFileName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeWindowsSegment($this->value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeWindowsFileName(): self
+    {
+        $decoded = self::decodeWindowsSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeWindowsFolderName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeWindowsSegment($this->value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeWindowsFolderName(): self
+    {
+        $decoded = self::decodeWindowsSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeWindowsPath(bool $double_encode = false): self
+    {
+        $value = str_replace('/', '\\', $this->value);
+        $encoded = self::encodeWindowsPathString($value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeWindowsPath(): self
+    {
+        $decoded = self::decodeWindowsPathString($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function toUnixFileName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, false);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toLinuxFolderName(): self
+    public function toUnixFolderName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, false);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toLinuxPath(): self
+    public function toUnixPath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $is_absolute = str_starts_with($value, '/');
@@ -607,6 +650,48 @@ final class XString implements Stringable
         }
 
         return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function encodeUnixFileName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeUnixSegment($this->value, false, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeUnixFileName(): self
+    {
+        $decoded = self::decodeUnixSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeUnixFolderName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeUnixSegment($this->value, false, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeUnixFolderName(): self
+    {
+        $decoded = self::decodeUnixSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeUnixPath(bool $double_encode = false): self
+    {
+        $encoded = self::encodeUnixPathString($this->value, false, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeUnixPath(): self
+    {
+        $decoded = self::decodeUnixPathString($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
     }
 
     public function toMacOSFileName(): self
@@ -655,6 +740,50 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
+    public function encodeMacOSFileName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeUnixSegment($this->value, true, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeMacOSFileName(): self
+    {
+        $decoded = self::decodeUnixSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeMacOSFolderName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeUnixSegment($this->value, true, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeMacOSFolderName(): self
+    {
+        $decoded = self::decodeUnixSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeMacOSPath(bool $double_encode = false): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $encoded = self::encodeUnixPathString($value, true, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeMacOSPath(): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $decoded = self::decodeUnixPathString($value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
     public function toSafeFileName(): self
     {
         $sanitized = self::sanitizeGenericSegment($this->value);
@@ -699,6 +828,50 @@ final class XString implements Stringable
         }
 
         return new self($result, $this->mode, $this->encoding);
+    }
+
+    public function encodeSafeFileName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeGenericSegment($this->value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeSafeFileName(): self
+    {
+        $decoded = self::decodeGenericSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeSafeFolderName(bool $double_encode = false): self
+    {
+        $encoded = self::encodeGenericSegment($this->value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeSafeFolderName(): self
+    {
+        $decoded = self::decodeGenericSegment($this->value);
+
+        return new self($decoded, $this->mode, $this->encoding);
+    }
+
+    public function encodeSafePath(bool $double_encode = false): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $encoded = self::encodeGenericPathString($value, $double_encode);
+
+        return new self($encoded, $this->mode, $this->encoding);
+    }
+
+    public function decodeSafePath(): self
+    {
+        $value = str_replace('\\', '/', $this->value);
+        $decoded = self::decodeGenericPathString($value);
+
+        return new self($decoded, $this->mode, $this->encoding);
     }
 
     public function insertAtInterval(Newline|HtmlTag|Regex|string $insert, int $interval): self
@@ -5677,6 +5850,404 @@ final class XString implements Stringable
         }
 
         return $normalized;
+    }
+
+    private static function encodeWindowsSegment(string $segment, bool $double_encode): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        $characters = self::splitCharacters($segment);
+        if ($characters === []) {
+            return '';
+        }
+
+        $count = count($characters);
+        $trailing = 0;
+        for ($index = $count - 1; $index >= 0; $index--) {
+            $char = $characters[$index];
+            if ($char === ' ' || $char === '.') {
+                $trailing++;
+                continue;
+            }
+
+            break;
+        }
+
+        $trimmed = rtrim($segment, " .");
+        $is_reserved = $trimmed !== ''
+            && in_array(strtoupper($trimmed), self::WINDOWS_RESERVED_NAMES, true);
+
+        $encoded = '';
+        for ($index = 0; $index < $count; $index++) {
+            $char = $characters[$index];
+
+            if (!$double_encode && $char === '%' && self::isPercentEncodedSequence($characters, $index)) {
+                $encoded .= '%' . $characters[$index + 1] . $characters[$index + 2];
+                $index += 2;
+                continue;
+            }
+
+            $should_encode = false;
+
+            if (in_array($char, ['%', '<', '>', ':', '"', '/', '\\', '|', '?', '*'], true)) {
+                $should_encode = true;
+            } elseif (strlen($char) === 1) {
+                $code = ord($char);
+                if ($code < 0x20 || $code === 0x7F) {
+                    $should_encode = true;
+                }
+            }
+
+            if ($trailing > 0 && $index >= $count - $trailing && ($char === ' ' || $char === '.')) {
+                $should_encode = true;
+            }
+
+            if ($is_reserved && $index === 0) {
+                $should_encode = true;
+            }
+
+            $encoded .= $should_encode
+                ? self::percentEncodeBytes($char)
+                : $char;
+        }
+
+        return $encoded;
+    }
+
+    private static function decodeWindowsSegment(string $segment): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        return self::decodePercentEncoded($segment);
+    }
+
+    private static function encodeWindowsPathString(string $path, bool $double_encode): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $prefix = '';
+        $remaining = $path;
+
+        if (str_starts_with($remaining, '\\\\')) {
+            $prefix = '\\\\';
+            $remaining = substr($remaining, 2);
+        } elseif (preg_match('/^([A-Za-z]):/', $remaining, $drive_match) === 1) {
+            $prefix = $drive_match[1] . ':';
+            $remaining = substr($remaining, 2);
+            if (str_starts_with($remaining, '\\')) {
+                $prefix .= '\\';
+                $remaining = substr($remaining, 1);
+            }
+        }
+
+        $result = $prefix;
+        $buffer = '';
+        $length = strlen($remaining);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $remaining[$i];
+            if ($char === '\\') {
+                if ($buffer !== '') {
+                    $result .= self::encodeWindowsSegment($buffer, $double_encode);
+                    $buffer = '';
+                }
+
+                $result .= '\\';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::encodeWindowsSegment($buffer, $double_encode);
+        }
+
+        return $result;
+    }
+
+    private static function decodeWindowsPathString(string $path): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $prefix = '';
+        $remaining = $path;
+
+        if (str_starts_with($remaining, '\\\\')) {
+            $prefix = '\\\\';
+            $remaining = substr($remaining, 2);
+        } elseif (preg_match('/^([A-Za-z]):/', $remaining, $drive_match) === 1) {
+            $prefix = $drive_match[1] . ':';
+            $remaining = substr($remaining, 2);
+            if (str_starts_with($remaining, '\\')) {
+                $prefix .= '\\';
+                $remaining = substr($remaining, 1);
+            }
+        }
+
+        $result = $prefix;
+        $buffer = '';
+        $length = strlen($remaining);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $remaining[$i];
+            if ($char === '\\') {
+                if ($buffer !== '') {
+                    $result .= self::decodeWindowsSegment($buffer);
+                    $buffer = '';
+                }
+
+                $result .= '\\';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::decodeWindowsSegment($buffer);
+        }
+
+        return $result;
+    }
+
+    private static function encodeUnixSegment(string $segment, bool $macos, bool $double_encode): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        $characters = self::splitCharacters($segment);
+        if ($characters === []) {
+            return '';
+        }
+
+        $count = count($characters);
+        $encoded = '';
+
+        for ($index = 0; $index < $count; $index++) {
+            $char = $characters[$index];
+
+            if (!$double_encode && $char === '%' && self::isPercentEncodedSequence($characters, $index)) {
+                $encoded .= '%' . $characters[$index + 1] . $characters[$index + 2];
+                $index += 2;
+                continue;
+            }
+
+            $should_encode = $char === '/' || $char === "\0" || $char === '%';
+
+            if ($macos && $char === ':') {
+                $should_encode = true;
+            }
+
+            $encoded .= $should_encode
+                ? self::percentEncodeBytes($char)
+                : $char;
+        }
+
+        return $encoded;
+    }
+
+    private static function decodeUnixSegment(string $segment): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        return self::decodePercentEncoded($segment);
+    }
+
+    private static function encodeUnixPathString(string $path, bool $macos, bool $double_encode): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $result = '';
+        $buffer = '';
+        $length = strlen($path);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $path[$i];
+            if ($char === '/') {
+                if ($buffer !== '') {
+                    $result .= self::encodeUnixSegment($buffer, $macos, $double_encode);
+                    $buffer = '';
+                }
+
+                $result .= '/';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::encodeUnixSegment($buffer, $macos, $double_encode);
+        }
+
+        return $result;
+    }
+
+    private static function decodeUnixPathString(string $path): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $result = '';
+        $buffer = '';
+        $length = strlen($path);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $path[$i];
+            if ($char === '/') {
+                if ($buffer !== '') {
+                    $result .= self::decodeUnixSegment($buffer);
+                    $buffer = '';
+                }
+
+                $result .= '/';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::decodeUnixSegment($buffer);
+        }
+
+        return $result;
+    }
+
+    private static function encodeGenericSegment(string $segment, bool $double_encode): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        return self::encodeWindowsSegment($segment, $double_encode);
+    }
+
+    private static function decodeGenericSegment(string $segment): string
+    {
+        if ($segment === '') {
+            return '';
+        }
+
+        return self::decodePercentEncoded($segment);
+    }
+
+    private static function encodeGenericPathString(string $path, bool $double_encode): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $result = '';
+        $buffer = '';
+        $length = strlen($path);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $path[$i];
+            if ($char === '/') {
+                if ($buffer !== '') {
+                    $result .= self::encodeGenericSegment($buffer, $double_encode);
+                    $buffer = '';
+                }
+
+                $result .= '/';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::encodeGenericSegment($buffer, $double_encode);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int, string> $characters
+     */
+    private static function isPercentEncodedSequence(array $characters, int $index): bool
+    {
+        if (!isset($characters[$index + 1], $characters[$index + 2])) {
+            return false;
+        }
+
+        $first = $characters[$index + 1];
+        $second = $characters[$index + 2];
+
+        if (strlen($first) !== 1 || strlen($second) !== 1) {
+            return false;
+        }
+
+        return ctype_xdigit($first) && ctype_xdigit($second);
+    }
+
+    private static function decodeGenericPathString(string $path): string
+    {
+        if ($path === '') {
+            return '';
+        }
+
+        $result = '';
+        $buffer = '';
+        $length = strlen($path);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $path[$i];
+            if ($char === '/') {
+                if ($buffer !== '') {
+                    $result .= self::decodeGenericSegment($buffer);
+                    $buffer = '';
+                }
+
+                $result .= '/';
+            } else {
+                $buffer .= $char;
+            }
+        }
+
+        if ($buffer !== '') {
+            $result .= self::decodeGenericSegment($buffer);
+        }
+
+        return $result;
+    }
+
+    private static function percentEncodeBytes(string $char): string
+    {
+        if ($char === '') {
+            return '';
+        }
+
+        $bytes = str_split($char);
+        $encoded = '';
+        foreach ($bytes as $byte) {
+            $encoded .= sprintf('%%%02X', ord($byte));
+        }
+
+        return $encoded;
+    }
+
+    private static function decodePercentEncoded(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $decoded = preg_replace_callback(
+            '/%([0-9A-Fa-f]{2})/',
+            static function (array $matches): string {
+                return chr(hexdec($matches[1]));
+            },
+            $value
+        );
+
+        return is_string($decoded) ? $decoded : $value;
     }
 
     private static function sanitizeWindowsSegment(string $segment): string

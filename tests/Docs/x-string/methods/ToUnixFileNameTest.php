@@ -7,33 +7,33 @@ namespace Orryv\XArray\Tests\Docs\XString\Methods;
 use PHPUnit\Framework\TestCase;
 use Orryv\XString;
 
-final class ToLinuxFileNameTest extends TestCase
+final class ToUnixFileNameTest extends TestCase
 {
-    public function testLinuxFilenameSlashes(): void
+    public function testUnixFilenameSlashes(): void
     {
         $value = XString::new('logs/error.log');
-        $result = $value->toLinuxFileName();
+        $result = $value->toUnixFileName();
         self::assertSame('logs_error.log', (string) $result);
     }
 
-    public function testLinuxFilenameSpecial(): void
+    public function testUnixFilenameSpecial(): void
     {
         $value = XString::new('..');
-        $result = $value->toLinuxFileName();
+        $result = $value->toUnixFileName();
         self::assertSame('_', (string) $result);
     }
 
-    public function testLinuxFilenameWhitespace(): void
+    public function testUnixFilenameWhitespace(): void
     {
         $value = XString::new("   ");
-        $result = $value->toLinuxFileName();
+        $result = $value->toUnixFileName();
         self::assertSame('_', (string) $result);
     }
 
-    public function testLinuxFilenameUnicode(): void
+    public function testUnixFilenameUnicode(): void
     {
         $value = XString::new('résumé.txt');
-        $result = $value->toLinuxFileName();
+        $result = $value->toUnixFileName();
         self::assertSame('résumé.txt', (string) $result);
     }
 
