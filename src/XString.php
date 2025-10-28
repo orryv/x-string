@@ -1041,7 +1041,7 @@ final class XString implements Stringable
         int $length,
         Newline|HtmlTag|Regex|string $pad_string = ' ',
         bool $left = true,
-        bool $right = false
+        bool $right = true
     ): self {
         if ($length < 0) {
             throw new InvalidArgumentException('Target length must be greater than or equal to 0.');

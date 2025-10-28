@@ -10,11 +10,11 @@ use Orryv\XString;
 
 final class PadTest extends TestCase
 {
-    public function testPadLeftDefault(): void
+    public function testPadDefaultBothSides(): void
     {
         $xstring = XString::new('42');
         $result = $xstring->pad(5, '0');
-        self::assertSame('00042', (string) $result);
+        self::assertSame('04200', (string) $result);
     }
 
     public function testPadRight(): void
@@ -24,24 +24,24 @@ final class PadTest extends TestCase
         self::assertSame('data...', (string) $result);
     }
 
-    public function testPadBoth(): void
+    public function testPadLeft(): void
     {
         $xstring = XString::new('cat');
-        $result = $xstring->pad(8, '_', left: true, right: true);
-        self::assertSame('__cat___', (string) $result);
+        $result = $xstring->pad(6, '_', left: true, right: false);
+        self::assertSame('___cat', (string) $result);
     }
 
     public function testPadGrapheme(): void
     {
         $result = XString::new('🙂')->pad(3, '⭐');
-        self::assertSame('⭐⭐🙂', (string) $result);
+        self::assertSame('⭐🙂⭐', (string) $result);
     }
 
     public function testPadByteMode(): void
     {
         $xstring = XString::new('猫')->withMode('bytes');
         $result = $xstring->pad(5, '?');
-        self::assertSame('??猫', (string) $result);
+        self::assertSame('?猫?', (string) $result);
         self::assertSame(5, $result->length());
     }
 

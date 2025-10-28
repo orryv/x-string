@@ -10,9 +10,9 @@
   - [Returns](#returns)
   - [Thrown exceptions](#thrown-exceptions)
   - [Examples](#examples)
-    - [Left-pad by default](#left-pad-by-default)
+    - [Pad on both sides by default](#pad-on-both-sides-by-default)
     - [Pad on the right side](#pad-on-the-right-side)
-    - [Pad on both sides](#pad-on-both-sides)
+    - [Pad on the left side](#pad-on-the-left-side)
     - [Respect grapheme-aware padding](#respect-grapheme-aware-padding)
     - [Pad while in byte mode](#pad-while-in-byte-mode)
     - [Immutability check](#immutability-check-3)
@@ -46,8 +46,8 @@ calculated using the active length mode (graphemes by default), ensuring multi-b
 
 ## Important notes and considerations
 
-- **Default direction.** With the default arguments the string is padded on the left. Set `$left = false, $right = true` for
-  right-padding behaviour.
+- **Default direction.** With the default arguments the string is padded on both sides (slightly favouring the right when the
+  required units are odd). Toggle `$left` and `$right` or use [`lpad()`](lpad.md)/[`rpad()`](rpad.md) for single-side padding.
 - **Mode aware.** Padding counts units according to the current mode (`bytes`, `codepoints`, `graphemes`). Switch modes with
   [`withMode()`](withMode.md) or its helpers (`asBytes()`, etc.).
 - **Immutability.** Returns a new `XString` instance; the original remains unchanged.
@@ -75,15 +75,15 @@ calculated using the active length mode (graphemes by default), ensuring multi-b
 
 ## Examples
 
-### Left-pad by default
+### Pad on both sides by default
 
-<!-- test:pad-left-default -->
+<!-- test:pad-default-both-sides -->
 ```php
 use Orryv\XString;
 
 $xstring = XString::new('42');
 $result = $xstring->pad(5, '0');
-#Test: self::assertSame('00042', (string) $result);
+#Test: self::assertSame('04200', (string) $result);
 ```
 
 ### Pad on the right side
@@ -97,15 +97,15 @@ $result = $xstring->pad(7, '.', left: false, right: true);
 #Test: self::assertSame('data...', (string) $result);
 ```
 
-### Pad on both sides
+### Pad on the left side
 
-<!-- test:pad-both -->
+<!-- test:pad-left -->
 ```php
 use Orryv\XString;
 
 $xstring = XString::new('cat');
-$result = $xstring->pad(8, '_', left: true, right: true);
-#Test: self::assertSame('__cat___', (string) $result);
+$result = $xstring->pad(6, '_', left: true, right: false);
+#Test: self::assertSame('___cat', (string) $result);
 ```
 
 ### Respect grapheme-aware padding
@@ -115,7 +115,7 @@ $result = $xstring->pad(8, '_', left: true, right: true);
 use Orryv\XString;
 
 $result = XString::new('🙂')->pad(3, '⭐');
-#Test: self::assertSame('⭐⭐🙂', (string) $result);
+#Test: self::assertSame('⭐🙂⭐', (string) $result);
 ```
 
 ### Pad while in byte mode
@@ -126,7 +126,7 @@ use Orryv\XString;
 
 $xstring = XString::new('猫')->withMode('bytes');
 $result = $xstring->pad(5, '?');
-#Test: self::assertSame('??猫', (string) $result);
+#Test: self::assertSame('?猫?', (string) $result);
 #Test: self::assertSame(5, $result->length());
 ```
 
