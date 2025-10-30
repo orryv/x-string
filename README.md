@@ -8,7 +8,9 @@ side effects.
 
 ## TODO
 
-- [x] html entity encode and decode methods: 
+- [ ] remove Regex where it doesn't make sense
+- [ ] add Stringable where it makes sense
+- [x] html entity encode and decode methods:
   - [x] encodeHtmlEntities()
   - [x] decodeHtmlEntities()
 - [x] toInt(), toFloat(), toBool() methods, tobool translates 'true', 'yes', 'ok', ... and '1', '2', ... to true . And 'false', 'no', 'failed', ... and '0', '-1', ... to false.
@@ -151,6 +153,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`replaceFirst`](docs/x-string/methods/replaceFirst.md) | 1.0 | `public function replaceFirst(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $search, Newline\|HtmlTag\|Regex\|string $replace): self`<br>Replace the first occurrence of a string with another string. |
 | [`replaceLast`](docs/x-string/methods/replaceLast.md) | 1.0 | `public function replaceLast(Newline\|HtmlTag\|Regex\|string\|array<Newline\|HtmlTag\|Regex\|string> $search, Newline\|HtmlTag\|Regex\|string $replace): self`<br>Replace the last occurrence of a string with another string. |
 | [`substr`](docs/x-string/methods/substr.md) | 1.0 | `public function substr(int $start, null \| int $length = null): self`<br>Get a substring of the string. If $length is not provided, it returns the substring from $start to the end of the string. *(Default mode for indexing/length is **graphemes**.)* |
+| [`limit`](docs/x-string/methods/limit.md) | 1.0 | `public function limit(int $length, HtmlTag\|Newline\|Stringable\|string $append_string = '...'): self`<br>Truncate the string to a maximum length using the current mode and only append the suffix when truncation occurs. |
 | [`repeat`](docs/x-string/methods/repeat.md) | 1.0 | `public function repeat(int $times): self`<br>Repeat the string a number of times. |
 | [`reverse`](docs/x-string/methods/reverse.md) | 1.0 | `public function reverse(): self`<br>Reverse the string. *(Default mode **graphemes**.)* |
 | [`shuffle`](docs/x-string/methods/shuffle.md) | 1.0 | `public function shuffle(): self`<br>Shuffle the characters in the string randomly. |

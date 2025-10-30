@@ -390,6 +390,35 @@ final class XString implements Stringable
         return new self(implode('', $slice), $this->mode, $this->encoding);
     }
 
+    public function limit(int $length, HtmlTag|Newline|Stringable|string $append_string = '...'): self
+    {
+        if ($length < 0) {
+            throw new InvalidArgumentException('Length must be greater than or equal to 0.');
+        }
+
+        $units = self::splitByMode($this->value, $this->mode, $this->encoding);
+        $count = count($units);
+
+        if ($count <= $length) {
+            return new self($this->value, $this->mode, $this->encoding);
+        }
+
+        $suffix = self::normalizeFragment($append_string);
+
+        if ($length === 0) {
+            return new self($suffix, $this->mode, $this->encoding);
+        }
+
+        $slice = array_slice($units, 0, $length);
+        $result = implode('', $slice);
+
+        if ($suffix !== '') {
+            $result .= $suffix;
+        }
+
+        return new self($result, $this->mode, $this->encoding);
+    }
+
     public function repeat(int $times): self
     {
         if ($times < 0) {
