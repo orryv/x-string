@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Orryv;
 
+use BadMethodCallException;
 use InvalidArgumentException;
 use Normalizer;
 use Orryv\XString\HtmlTag;
@@ -132,6 +133,28 @@ final class XString implements Stringable
         }
 
         return new self(self::normalizeFragment($data));
+    }
+
+    public static function __callStatic(string $name, array $arguments): mixed
+    {
+        $instance = $arguments === []
+            ? self::new()
+            : self::new(array_shift($arguments));
+
+        if (!method_exists($instance, $name)) {
+            throw new BadMethodCallException(sprintf('Call to undefined method %s::%s()', self::class, $name));
+        }
+
+        return $instance->$name(...$arguments);
+    }
+
+    public function __call(string $name, array $arguments): mixed
+    {
+        if (!method_exists($this, $name)) {
+            throw new BadMethodCallException(sprintf('Call to undefined method %s::%s()', self::class, $name));
+        }
+
+        return $this->$name(...$arguments);
     }
 
     public static function rand(int $length, string $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'): self
@@ -274,7 +297,7 @@ final class XString implements Stringable
         return new self($content, self::DEFAULT_MODE, $encoding);
     }
 
-    public function length(): int
+    protected function length(): int
     {
         return match ($this->mode) {
             'bytes' => strlen($this->value),
@@ -285,37 +308,37 @@ final class XString implements Stringable
         };
     }
 
-    public function byteLength(): int
+    protected function byteLength(): int
     {
         return strlen($this->value);
     }
 
-    public function graphemeLength(): int
+    protected function graphemeLength(): int
     {
         return $this->graphemeLengthOrFallback();
     }
 
-    public function withMode(string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING): self
+    protected function withMode(string $mode = self::DEFAULT_MODE, string $encoding = self::DEFAULT_ENCODING): self
     {
         return new self($this->value, $mode, $encoding);
     }
 
-    public function asBytes(string $encoding = self::DEFAULT_ENCODING): self
+    protected function asBytes(string $encoding = self::DEFAULT_ENCODING): self
     {
         return $this->withMode('bytes', $encoding);
     }
 
-    public function asCodepoints(string $encoding = self::DEFAULT_ENCODING): self
+    protected function asCodepoints(string $encoding = self::DEFAULT_ENCODING): self
     {
         return $this->withMode('codepoints', $encoding);
     }
 
-    public function asGraphemes(string $encoding = self::DEFAULT_ENCODING): self
+    protected function asGraphemes(string $encoding = self::DEFAULT_ENCODING): self
     {
         return $this->withMode('graphemes', $encoding);
     }
 
-    public function charAt(int $index): string
+    protected function charAt(int $index): string
     {
         $units = self::splitByMode($this->value, $this->mode, $this->encoding);
         if ($units === []) {
@@ -335,7 +358,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string>|null $data
      */
-    public function append(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
+    protected function append(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
     {
         $additional = is_array($data)
             ? self::concatenateFragments($data)
@@ -347,7 +370,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string>|null $data
      */
-    public function prepend(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
+    protected function prepend(HtmlTag|Newline|Regex|Stringable|string|array|null $data): self
     {
         $additional = is_array($data)
             ? self::concatenateFragments($data)
@@ -356,7 +379,7 @@ final class XString implements Stringable
         return new self($additional . $this->value, $this->mode, $this->encoding);
     }
 
-    public function substr(int $start, ?int $length = null): self
+    protected function substr(int $start, ?int $length = null): self
     {
         $units = self::splitByMode($this->value, $this->mode, $this->encoding);
         $total = count($units);
@@ -390,7 +413,7 @@ final class XString implements Stringable
         return new self(implode('', $slice), $this->mode, $this->encoding);
     }
 
-    public function limit(int $length, HtmlTag|Newline|Stringable|string $append_string = '...'): self
+    protected function limit(int $length, HtmlTag|Newline|Stringable|string $append_string = '...'): self
     {
         if ($length < 0) {
             throw new InvalidArgumentException('Length must be greater than or equal to 0.');
@@ -419,7 +442,7 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function repeat(int $times): self
+    protected function repeat(int $times): self
     {
         if ($times < 0) {
             throw new InvalidArgumentException('Repeat count must be greater than or equal to 0.');
@@ -432,7 +455,7 @@ final class XString implements Stringable
         return new self(str_repeat($this->value, $times), $this->mode, $this->encoding);
     }
 
-    public function reverse(): self
+    protected function reverse(): self
     {
         $units = self::splitByMode($this->value, $this->mode, $this->encoding);
         if ($units === []) {
@@ -444,7 +467,7 @@ final class XString implements Stringable
         return new self(implode('', $units), $this->mode, $this->encoding);
     }
 
-    public function shuffle(): self
+    protected function shuffle(): self
     {
         $units = self::splitByMode($this->value, $this->mode, $this->encoding);
         if (count($units) <= 1) {
@@ -456,7 +479,7 @@ final class XString implements Stringable
         return new self(implode('', $units), $this->mode, $this->encoding);
     }
 
-    public function slug(Newline|HtmlTag|string $separator = '-'): self
+    protected function slug(Newline|HtmlTag|string $separator = '-'): self
     {
         $normalized_separator = self::normalizeFragment($separator);
         if ($normalized_separator === '') {
@@ -482,7 +505,7 @@ final class XString implements Stringable
         return new self($slug, $this->mode, $this->encoding);
     }
 
-    public function fileNameSlug(Newline|HtmlTag|string $separator = '-'): self
+    protected function fileNameSlug(Newline|HtmlTag|string $separator = '-'): self
     {
         $normalized_separator = self::normalizeFragment($separator);
         if ($normalized_separator === '') {
@@ -525,21 +548,21 @@ final class XString implements Stringable
         return new self($slug, $this->mode, $this->encoding);
     }
 
-    public function toWindowsFileName(): self
+    protected function toWindowsFileName(): self
     {
         $sanitized = self::sanitizeWindowsSegment($this->value);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toWindowsFolderName(): self
+    protected function toWindowsFolderName(): self
     {
         $sanitized = self::sanitizeWindowsSegment($this->value);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toWindowsPath(): self
+    protected function toWindowsPath(): self
     {
         $value = str_replace('/', '\\', $this->value);
         $has_trailing = preg_match('/\\\\$/', rtrim($value)) === 1;
@@ -592,35 +615,35 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function encodeWindowsFileName(bool $double_encode = false): self
+    protected function encodeWindowsFileName(bool $double_encode = false): self
     {
         $encoded = self::encodeWindowsSegment($this->value, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeWindowsFileName(): self
+    protected function decodeWindowsFileName(): self
     {
         $decoded = self::decodeWindowsSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeWindowsFolderName(bool $double_encode = false): self
+    protected function encodeWindowsFolderName(bool $double_encode = false): self
     {
         $encoded = self::encodeWindowsSegment($this->value, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeWindowsFolderName(): self
+    protected function decodeWindowsFolderName(): self
     {
         $decoded = self::decodeWindowsSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeWindowsPath(bool $double_encode = false): self
+    protected function encodeWindowsPath(bool $double_encode = false): self
     {
         $value = str_replace('/', '\\', $this->value);
         $encoded = self::encodeWindowsPathString($value, $double_encode);
@@ -628,28 +651,28 @@ final class XString implements Stringable
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeWindowsPath(): self
+    protected function decodeWindowsPath(): self
     {
         $decoded = self::decodeWindowsPathString($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function toUnixFileName(): self
+    protected function toUnixFileName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, false);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toUnixFolderName(): self
+    protected function toUnixFolderName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, false);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toUnixPath(): self
+    protected function toUnixPath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $is_absolute = str_starts_with($value, '/');
@@ -681,63 +704,63 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function encodeUnixFileName(bool $double_encode = false): self
+    protected function encodeUnixFileName(bool $double_encode = false): self
     {
         $encoded = self::encodeUnixSegment($this->value, false, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeUnixFileName(): self
+    protected function decodeUnixFileName(): self
     {
         $decoded = self::decodeUnixSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeUnixFolderName(bool $double_encode = false): self
+    protected function encodeUnixFolderName(bool $double_encode = false): self
     {
         $encoded = self::encodeUnixSegment($this->value, false, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeUnixFolderName(): self
+    protected function decodeUnixFolderName(): self
     {
         $decoded = self::decodeUnixSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeUnixPath(bool $double_encode = false): self
+    protected function encodeUnixPath(bool $double_encode = false): self
     {
         $encoded = self::encodeUnixPathString($this->value, false, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeUnixPath(): self
+    protected function decodeUnixPath(): self
     {
         $decoded = self::decodeUnixPathString($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function toMacOSFileName(): self
+    protected function toMacOSFileName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, true);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toMacOSFolderName(): self
+    protected function toMacOSFolderName(): self
     {
         $sanitized = self::sanitizeUnixSegment($this->value, true);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toMacOSPath(): self
+    protected function toMacOSPath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $is_absolute = str_starts_with($value, '/');
@@ -769,35 +792,35 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function encodeMacOSFileName(bool $double_encode = false): self
+    protected function encodeMacOSFileName(bool $double_encode = false): self
     {
         $encoded = self::encodeUnixSegment($this->value, true, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeMacOSFileName(): self
+    protected function decodeMacOSFileName(): self
     {
         $decoded = self::decodeUnixSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeMacOSFolderName(bool $double_encode = false): self
+    protected function encodeMacOSFolderName(bool $double_encode = false): self
     {
         $encoded = self::encodeUnixSegment($this->value, true, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeMacOSFolderName(): self
+    protected function decodeMacOSFolderName(): self
     {
         $decoded = self::decodeUnixSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeMacOSPath(bool $double_encode = false): self
+    protected function encodeMacOSPath(bool $double_encode = false): self
     {
         $value = str_replace('\\', '/', $this->value);
         $encoded = self::encodeUnixPathString($value, true, $double_encode);
@@ -805,7 +828,7 @@ final class XString implements Stringable
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeMacOSPath(): self
+    protected function decodeMacOSPath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $decoded = self::decodeUnixPathString($value);
@@ -813,21 +836,21 @@ final class XString implements Stringable
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function toSafeFileName(): self
+    protected function toSafeFileName(): self
     {
         $sanitized = self::sanitizeGenericSegment($this->value);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toSafeFolderName(): self
+    protected function toSafeFolderName(): self
     {
         $sanitized = self::sanitizeGenericSegment($this->value);
 
         return new self($sanitized, $this->mode, $this->encoding);
     }
 
-    public function toSafePath(): self
+    protected function toSafePath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $is_absolute = str_starts_with($value, '/');
@@ -859,35 +882,35 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function encodeSafeFileName(bool $double_encode = false): self
+    protected function encodeSafeFileName(bool $double_encode = false): self
     {
         $encoded = self::encodeGenericSegment($this->value, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeSafeFileName(): self
+    protected function decodeSafeFileName(): self
     {
         $decoded = self::decodeGenericSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeSafeFolderName(bool $double_encode = false): self
+    protected function encodeSafeFolderName(bool $double_encode = false): self
     {
         $encoded = self::encodeGenericSegment($this->value, $double_encode);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeSafeFolderName(): self
+    protected function decodeSafeFolderName(): self
     {
         $decoded = self::decodeGenericSegment($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function encodeSafePath(bool $double_encode = false): self
+    protected function encodeSafePath(bool $double_encode = false): self
     {
         $value = str_replace('\\', '/', $this->value);
         $encoded = self::encodeGenericPathString($value, $double_encode);
@@ -895,7 +918,7 @@ final class XString implements Stringable
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeSafePath(): self
+    protected function decodeSafePath(): self
     {
         $value = str_replace('\\', '/', $this->value);
         $decoded = self::decodeGenericPathString($value);
@@ -903,7 +926,7 @@ final class XString implements Stringable
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function insertAtInterval(Newline|HtmlTag|Regex|string $insert, int $interval): self
+    protected function insertAtInterval(Newline|HtmlTag|Regex|string $insert, int $interval): self
     {
         if ($interval < 1) {
             throw new InvalidArgumentException('Interval must be at least 1.');
@@ -928,7 +951,7 @@ final class XString implements Stringable
         return new self(implode('', $parts), $this->mode, $this->encoding);
     }
 
-    public function wrap(Newline|HtmlTag|Regex|string $before, Newline|HtmlTag|Regex|string|null $after = null): self
+    protected function wrap(Newline|HtmlTag|Regex|string $before, Newline|HtmlTag|Regex|string|null $after = null): self
     {
         $prefix = self::normalizeFragment($before);
         $suffix = $after === null
@@ -938,7 +961,7 @@ final class XString implements Stringable
         return new self($prefix . $this->value . $suffix, $this->mode, $this->encoding);
     }
 
-    public function indent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
+    protected function indent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
     {
         if ($spaces < 0 || $tabs < 0) {
             throw new InvalidArgumentException('Indentation parameters must be greater than or equal to 0.');
@@ -988,7 +1011,7 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function outdent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
+    protected function outdent(int $spaces = 2, int $tabs = 0, int $lines = 0): self
     {
         if ($spaces < 0 || $tabs < 0) {
             throw new InvalidArgumentException('Indentation parameters must be greater than or equal to 0.');
@@ -1048,7 +1071,7 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function normalize(int $form = Normalizer::FORM_C): self
+    protected function normalize(int $form = Normalizer::FORM_C): self
     {
         if (!class_exists(Normalizer::class)) {
             throw new RuntimeException('The intl extension (Normalizer class) is required for normalization.');
@@ -1066,7 +1089,7 @@ final class XString implements Stringable
         return new self($normalized, $this->mode, $this->encoding);
     }
 
-    public function pad(
+    protected function pad(
         int $length,
         Newline|HtmlTag|Regex|string $pad_string = ' ',
         bool $left = true,
@@ -1113,22 +1136,22 @@ final class XString implements Stringable
         return new self($left_padding . $this->value . $right_padding, $this->mode, $this->encoding);
     }
 
-    public function lpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    protected function lpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
     {
         return $this->pad($length, $pad_string, true, false);
     }
 
-    public function rpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    protected function rpad(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
     {
         return $this->pad($length, $pad_string, false, true);
     }
 
-    public function center(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
+    protected function center(int $length, Newline|HtmlTag|Regex|string $pad_string = ' '): self
     {
         return $this->pad($length, $pad_string, true, true);
     }
 
-    public function mask(
+    protected function mask(
         Newline|HtmlTag|Regex|string $mask,
         Newline|HtmlTag|Regex|string $mask_char = '#',
         bool $reversed = false
@@ -1208,7 +1231,7 @@ final class XString implements Stringable
         return new self(implode('', $result_units), $this->mode, $this->encoding);
     }
 
-    public function collapseWhitespace(bool $space = true, bool $tab = true, bool $newline = false): self
+    protected function collapseWhitespace(bool $space = true, bool $tab = true, bool $newline = false): self
     {
         if (!$space && !$tab && !$newline) {
             return new self($this->value, $this->mode, $this->encoding);
@@ -1257,17 +1280,17 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function collapseWhitespaceToSpace(): self
+    protected function collapseWhitespaceToSpace(): self
     {
         return $this->collapseWhitespaceToReplacement(' ');
     }
 
-    public function collapseWhitespaceToTab(): self
+    protected function collapseWhitespaceToTab(): self
     {
         return $this->collapseWhitespaceToReplacement("\t");
     }
 
-    public function collapseWhitespaceToNewline(): self
+    protected function collapseWhitespaceToNewline(): self
     {
         return $this->collapseWhitespaceToReplacement("\n");
     }
@@ -1276,7 +1299,7 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $start
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $end
      */
-    public function between(
+    protected function between(
         HtmlTag|Newline|Regex|Stringable|string|array $start,
         HtmlTag|Newline|Regex|Stringable|string|array $end,
         bool $last_occurence = false,
@@ -1328,7 +1351,7 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $end
      * @return list<string>
      */
-    public function betweenAll(
+    protected function betweenAll(
         HtmlTag|Newline|Regex|Stringable|string|array $start,
         HtmlTag|Newline|Regex|Stringable|string|array $end,
         bool $reversed = false,
@@ -1383,7 +1406,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $search
      */
-    public function before(
+    protected function before(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         bool $last_occurence = false,
         int $skip = 0,
@@ -1416,7 +1439,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string|array> $search
      */
-    public function after(
+    protected function after(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         bool $last_occurence = false,
         int $skip = 0,
@@ -1450,7 +1473,7 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $delimiter
      * @return list<string>
      */
-    public function split(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
+    protected function split(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
     {
         if ($limit !== null && $limit < 1) {
             throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
@@ -1491,7 +1514,7 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $delimiter
      * @return list<string>
      */
-    public function explode(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
+    protected function explode(HtmlTag|Newline|Regex|Stringable|string|array $delimiter, ?int $limit = null): array
     {
         return $this->split($delimiter, $limit);
     }
@@ -1499,7 +1522,7 @@ final class XString implements Stringable
     /**
      * @return list<string>
      */
-    public function lines(bool $trim = false, ?int $limit = null): array
+    protected function lines(bool $trim = false, ?int $limit = null): array
     {
         if ($limit !== null && $limit < 1) {
             throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
@@ -1531,7 +1554,7 @@ final class XString implements Stringable
         return $segments;
     }
 
-    public function lineCount(): int
+    protected function lineCount(): int
     {
         return count($this->lines());
     }
@@ -1539,7 +1562,7 @@ final class XString implements Stringable
     /**
      * @return list<string>
      */
-    public function words(bool $trim = false, ?int $limit = null): array
+    protected function words(bool $trim = false, ?int $limit = null): array
     {
         if ($limit !== null && $limit < 1) {
             throw new InvalidArgumentException('Limit must be greater than or equal to 1 when provided.');
@@ -1584,12 +1607,12 @@ final class XString implements Stringable
         return array_values($segments);
     }
 
-    public function wordCount(): int
+    protected function wordCount(): int
     {
         return count($this->words());
     }
 
-    public function sentenceCount(): int
+    protected function sentenceCount(): int
     {
         $normalized = trim($this->value);
         if ($normalized === '') {
@@ -1660,7 +1683,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $input_delimiter
      */
-    public function toSnake(Newline|HtmlTag|Regex|string|array $input_delimiter = ' '): self
+    protected function toSnake(Newline|HtmlTag|Regex|string|array $input_delimiter = ' '): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -1671,7 +1694,7 @@ final class XString implements Stringable
         return new self(implode('_', $words), $this->mode, $this->encoding);
     }
 
-    public function toKebab(): self
+    protected function toKebab(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -1682,7 +1705,7 @@ final class XString implements Stringable
         return new self(str_replace('_', '-', (string) $snake), $this->mode, $this->encoding);
     }
 
-    public function toCamel(bool $capitalize_first = false): self
+    protected function toCamel(bool $capitalize_first = false): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -1714,7 +1737,7 @@ final class XString implements Stringable
         return new self($result, $this->mode, $this->encoding);
     }
 
-    public function toTitle(): self
+    protected function toTitle(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -1743,7 +1766,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, $this->encoding);
     }
 
-    public function toPascal(): self
+    protected function toPascal(): self
     {
         return $this->toCamel(true);
     }
@@ -1752,7 +1775,7 @@ final class XString implements Stringable
      * @param Regex|array<int, Regex> $pattern
      * @return self|null
      */
-    public function match(Regex|array $pattern, int $offset = 0): ?self
+    protected function match(Regex|array $pattern, int $offset = 0): ?self
     {
         $patterns = is_array($pattern) ? $pattern : [$pattern];
 
@@ -1807,7 +1830,7 @@ final class XString implements Stringable
         return new self($bestMatch['value'], $this->mode, $this->encoding);
     }
 
-    public function matchAll(
+    protected function matchAll(
         Regex|array $pattern,
         false|int $limit = false,
         array|int|null $flags = PREG_PATTERN_ORDER
@@ -1893,17 +1916,17 @@ final class XString implements Stringable
         return $aggregate;
     }
 
-    public function trim(bool $newline = true, bool $space = true, bool $tab = true): self
+    protected function trim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(true, true, $newline, $space, $tab);
     }
 
-    public function ltrim(bool $newline = true, bool $space = true, bool $tab = true): self
+    protected function ltrim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(true, false, $newline, $space, $tab);
     }
 
-    public function rtrim(bool $newline = true, bool $space = true, bool $tab = true): self
+    protected function rtrim(bool $newline = true, bool $space = true, bool $tab = true): self
     {
         return $this->trimInternal(false, true, $newline, $space, $tab);
     }
@@ -1911,7 +1934,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function replace(
+    protected function replace(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         HtmlTag|Newline|Regex|Stringable|string $replace,
         ?int $limit = null,
@@ -1994,14 +2017,14 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function replaceFirst(
+    protected function replaceFirst(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         HtmlTag|Newline|Regex|Stringable|string $replace
     ): self {
         return $this->replace($search, $replace, 1);
     }
 
-    public function replaceLast(
+    protected function replaceLast(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         HtmlTag|Newline|Regex|Stringable|string $replace
     ): self {
@@ -2011,7 +2034,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function strip(
+    protected function strip(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         ?int $limit = null,
         bool $reversed = false
@@ -2019,7 +2042,7 @@ final class XString implements Stringable
         return $this->replace($search, '', $limit, $reversed);
     }
 
-    public function stripEmojis(): self
+    protected function stripEmojis(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -2043,14 +2066,14 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $allowed_tags
      */
-    public function stripTags(HtmlTag|Newline|Regex|Stringable|string|array $allowed_tags = ''): self
+    protected function stripTags(HtmlTag|Newline|Regex|Stringable|string|array $allowed_tags = ''): self
     {
         $allowed = self::normalizeAllowedTags($allowed_tags);
 
         return new self(strip_tags($this->value, $allowed), $this->mode, $this->encoding);
     }
 
-    public function stripAccents(): self
+    protected function stripAccents(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -2083,7 +2106,7 @@ final class XString implements Stringable
         return new self($value, $this->mode, $this->encoding);
     }
 
-    public function ensurePrefix(Newline|HtmlTag|string $prefix): self
+    protected function ensurePrefix(Newline|HtmlTag|string $prefix): self
     {
         $fragment = self::normalizeFragment($prefix);
         if ($fragment === '') {
@@ -2097,7 +2120,7 @@ final class XString implements Stringable
         return new self($fragment . $this->value, $this->mode, $this->encoding);
     }
 
-    public function ensureSuffix(Newline|HtmlTag|string $suffix): self
+    protected function ensureSuffix(Newline|HtmlTag|string $suffix): self
     {
         $fragment = self::normalizeFragment($suffix);
         if ($fragment === '') {
@@ -2114,7 +2137,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $prefix
      */
-    public function removePrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): self
+    protected function removePrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): self
     {
         $candidates = is_array($prefix) ? $prefix : [$prefix];
         if ($candidates === []) {
@@ -2138,7 +2161,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $suffix
      */
-    public function removeSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): self
+    protected function removeSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): self
     {
         $candidates = is_array($suffix) ? $suffix : [$suffix];
         if ($candidates === []) {
@@ -2159,7 +2182,7 @@ final class XString implements Stringable
         return new self($this->value, $this->mode, $this->encoding);
     }
 
-    public function togglePrefix(Newline|HtmlTag|string $prefix): self
+    protected function togglePrefix(Newline|HtmlTag|string $prefix): self
     {
         $fragment = self::normalizeFragment($prefix);
         if ($fragment === '') {
@@ -2173,7 +2196,7 @@ final class XString implements Stringable
         return $this->ensurePrefix($prefix);
     }
 
-    public function toggleSuffix(Newline|HtmlTag|string $suffix): self
+    protected function toggleSuffix(Newline|HtmlTag|string $suffix): self
     {
         $fragment = self::normalizeFragment($suffix);
         if ($fragment === '') {
@@ -2190,7 +2213,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $prefix
      */
-    public function hasPrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): bool
+    protected function hasPrefix(HtmlTag|Newline|Regex|Stringable|string|array $prefix): bool
     {
         return $this->startsWith($prefix);
     }
@@ -2198,7 +2221,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $suffix
      */
-    public function hasSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): bool
+    protected function hasSuffix(HtmlTag|Newline|Regex|Stringable|string|array $suffix): bool
     {
         return $this->endsWith($suffix);
     }
@@ -2206,7 +2229,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function contains(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    protected function contains(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
     {
         $candidates = is_array($search) ? $search : [$search];
         if ($candidates === []) {
@@ -2230,7 +2253,7 @@ final class XString implements Stringable
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      * @return false|int|array<int, int>
      */
-    public function indexOf(
+    protected function indexOf(
         HtmlTag|Newline|Regex|Stringable|string|array $search,
         bool $reversed = false,
         int|bool $limit = 1,
@@ -2531,7 +2554,7 @@ final class XString implements Stringable
         ];
     }
 
-    public function isEmpty(bool $newline = true, bool $space = true, bool $tab = true): bool
+    protected function isEmpty(bool $newline = true, bool $space = true, bool $tab = true): bool
     {
         if ($this->value === '') {
             return true;
@@ -2552,7 +2575,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function startsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    protected function startsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
     {
         $candidates = is_array($search) ? $search : [$search];
         if ($candidates === []) {
@@ -2575,7 +2598,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function endsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
+    protected function endsWith(HtmlTag|Newline|Regex|Stringable|string|array $search): bool
     {
         $candidates = is_array($search) ? $search : [$search];
         if ($candidates === []) {
@@ -2598,7 +2621,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $string
      */
-    public function equals(HtmlTag|Newline|Regex|Stringable|string|array $string, bool $case_sensitive = true): bool
+    protected function equals(HtmlTag|Newline|Regex|Stringable|string|array $string, bool $case_sensitive = true): bool
     {
         $candidates = is_array($string) ? $string : [$string];
         if ($candidates === []) {
@@ -2621,7 +2644,7 @@ final class XString implements Stringable
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $search
      */
-    public function countOccurrences(HtmlTag|Newline|Regex|Stringable|string|array $search): int
+    protected function countOccurrences(HtmlTag|Newline|Regex|Stringable|string|array $search): int
     {
         $candidates = is_array($search) ? $search : [$search];
         if ($candidates === []) {
@@ -2641,7 +2664,7 @@ final class XString implements Stringable
         return $count;
     }
 
-    public function similarityScore(
+    protected function similarityScore(
         HtmlTag|Newline|Regex|Stringable|string|array $comparison,
         string $algorithm = 'github-style',
         array $options = []
@@ -2665,7 +2688,7 @@ final class XString implements Stringable
         );
     }
 
-    public function transliterate(string $to = 'ASCII//TRANSLIT'): self
+    protected function transliterate(string $to = 'ASCII//TRANSLIT'): self
     {
         $target = trim($to);
         if ($target === '') {
@@ -2722,7 +2745,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, self::baseEncoding($target));
     }
 
-    public function toEncoding(string $to_encoding, ?string $from_encoding = null): self
+    protected function toEncoding(string $to_encoding, ?string $from_encoding = null): self
     {
         $normalized_target = self::normalizeEncoding($to_encoding);
         $target_base = self::baseEncoding($normalized_target);
@@ -2745,7 +2768,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, $target_base);
     }
 
-    public function detectEncoding(array $encodings = ['UTF-8', 'ISO-8859-1', 'ASCII']): string|false
+    protected function detectEncoding(array $encodings = ['UTF-8', 'ISO-8859-1', 'ASCII']): string|false
     {
         if ($encodings === []) {
             throw new InvalidArgumentException('Encoding list cannot be empty.');
@@ -2782,7 +2805,7 @@ final class XString implements Stringable
         return false;
     }
 
-    public function isValidEncoding(?string $encoding = null): bool
+    protected function isValidEncoding(?string $encoding = null): bool
     {
         $target = $encoding !== null
             ? self::normalizeEncoding($encoding)
@@ -2803,7 +2826,7 @@ final class XString implements Stringable
         return true;
     }
 
-    public function isAscii(): bool
+    protected function isAscii(): bool
     {
         if ($this->value === '') {
             return true;
@@ -2816,7 +2839,7 @@ final class XString implements Stringable
         return preg_match('/^[\x00-\x7F]*$/', $this->value) === 1;
     }
 
-    public function isUtf8(): bool
+    protected function isUtf8(): bool
     {
         if ($this->value === '') {
             return true;
@@ -2829,7 +2852,7 @@ final class XString implements Stringable
         return preg_match('//u', $this->value) === 1;
     }
 
-    public function toUtf8(?string $from_encoding = null): self
+    protected function toUtf8(?string $from_encoding = null): self
     {
         $source = $from_encoding !== null
             ? self::normalizeEncoding($from_encoding)
@@ -2840,7 +2863,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, 'UTF-8');
     }
 
-    public function toAscii(?string $from_encoding = null): self
+    protected function toAscii(?string $from_encoding = null): self
     {
         $source = $from_encoding !== null
             ? self::normalizeEncoding($from_encoding)
@@ -2853,7 +2876,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, 'ASCII');
     }
 
-    public function encodeHtmlEntities(
+    protected function encodeHtmlEntities(
         int $flags = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401,
         ?string $encoding = null,
         bool $double_encode = false
@@ -2875,7 +2898,7 @@ final class XString implements Stringable
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function decodeHtmlEntities(int $flags = ENT_QUOTES | ENT_HTML401, ?string $encoding = null): self
+    protected function decodeHtmlEntities(int $flags = ENT_QUOTES | ENT_HTML401, ?string $encoding = null): self
     {
         $target_encoding = $encoding !== null
             ? self::normalizeEncoding($encoding)
@@ -2894,7 +2917,7 @@ final class XString implements Stringable
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function toInt(): int
+    protected function toInt(): int
     {
         $normalized = str_replace('_', '', trim($this->value));
 
@@ -2949,7 +2972,7 @@ final class XString implements Stringable
         return (int) $float_value;
     }
 
-    public function toFloat(): float
+    protected function toFloat(): float
     {
         $normalized = str_replace('_', '', trim($this->value));
 
@@ -2969,7 +2992,7 @@ final class XString implements Stringable
         return $float_value;
     }
 
-    public function toBool(): bool
+    protected function toBool(): bool
     {
         $normalized = trim($this->value);
 
@@ -3032,12 +3055,12 @@ final class XString implements Stringable
         throw new InvalidValueConversionException('Value cannot be interpreted as a boolean.');
     }
 
-    public function base64Encode(): self
+    protected function base64Encode(): self
     {
         return new self(base64_encode($this->value), $this->mode, $this->encoding);
     }
 
-    public function base64Decode(): self
+    protected function base64Decode(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -3056,27 +3079,27 @@ final class XString implements Stringable
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function md5(bool $raw_output = false): self
+    protected function md5(bool $raw_output = false): self
     {
         return new self(md5($this->value, $raw_output), $this->mode, $this->encoding);
     }
 
-    public function crc32(bool $raw_output = false): self
+    protected function crc32(bool $raw_output = false): self
     {
         return new self(hash('crc32b', $this->value, $raw_output), $this->mode, $this->encoding);
     }
 
-    public function sha1(bool $raw_output = false): self
+    protected function sha1(bool $raw_output = false): self
     {
         return new self(sha1($this->value, $raw_output), $this->mode, $this->encoding);
     }
 
-    public function sha256(bool $raw_output = false): self
+    protected function sha256(bool $raw_output = false): self
     {
         return new self(hash('sha256', $this->value, $raw_output), $this->mode, $this->encoding);
     }
 
-    public function crypt(string $salt): self
+    protected function crypt(string $salt): self
     {
         if ($salt === '') {
             throw new InvalidArgumentException('Salt must be provided for crypt().');
@@ -3090,7 +3113,7 @@ final class XString implements Stringable
         return new self($hash, $this->mode, $this->encoding);
     }
 
-    public function passwordHash(int|string $algo = PASSWORD_BCRYPT, array $options = []): self
+    protected function passwordHash(int|string $algo = PASSWORD_BCRYPT, array $options = []): self
     {
         $hash = password_hash($this->value, $algo, $options);
         if ($hash === false) {
@@ -3100,12 +3123,12 @@ final class XString implements Stringable
         return new self($hash, $this->mode, $this->encoding);
     }
 
-    public function passwordVerify(string $hash): bool
+    protected function passwordVerify(string $hash): bool
     {
         return password_verify($this->value, $hash);
     }
 
-    public function encrypt(string $password, string $cipher = 'sodium_xchacha20'): self
+    protected function encrypt(string $password, string $cipher = 'sodium_xchacha20'): self
     {
         $algorithm = $this->resolveEncryptionAlgorithm($cipher);
         $salt = random_bytes(self::ENCRYPTION_SALT_BYTES);
@@ -3172,7 +3195,7 @@ final class XString implements Stringable
         return new self(base64_encode($envelope), $this->mode, $this->encoding);
     }
 
-    public function decrypt(string $password, string $cipher = 'sodium_xchacha20'): self
+    protected function decrypt(string $password, string $cipher = 'sodium_xchacha20'): self
     {
         $this->validateCipherName($cipher);
 
@@ -3262,7 +3285,7 @@ final class XString implements Stringable
         return new self($plaintext, $this->mode, $this->encoding);
     }
 
-    public function htmlEscape(int $flags = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, string $encoding = 'UTF-8'): self
+    protected function htmlEscape(int $flags = ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, string $encoding = 'UTF-8'): self
     {
         $error = null;
         set_error_handler(static function (int $severity, string $message) use (&$error): bool {
@@ -3288,28 +3311,28 @@ final class XString implements Stringable
         return new self($escaped, $this->mode, $encoding);
     }
 
-    public function htmlUnescape(): self
+    protected function htmlUnescape(): self
     {
         $unescaped = html_entity_decode($this->value, ENT_QUOTES | ENT_HTML5, $this->encoding);
 
         return new self($unescaped, $this->mode, $this->encoding);
     }
 
-    public function urlEncode(bool $raw = false): self
+    protected function urlEncode(bool $raw = false): self
     {
         $encoded = $raw ? rawurlencode($this->value) : urlencode($this->value);
 
         return new self($encoded, $this->mode, $this->encoding);
     }
 
-    public function urlDecode(bool $raw = false): self
+    protected function urlDecode(bool $raw = false): self
     {
         $decoded = $raw ? rawurldecode($this->value) : urldecode($this->value);
 
         return new self($decoded, $this->mode, $this->encoding);
     }
 
-    public function nl2br(bool $is_xhtml = true): self
+    protected function nl2br(bool $is_xhtml = true): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -3320,7 +3343,7 @@ final class XString implements Stringable
         return new self($converted, $this->mode, $this->encoding);
     }
 
-    public function br2nl(): self
+    protected function br2nl(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -3500,7 +3523,7 @@ final class XString implements Stringable
         $value = str_repeat("\0", strlen($value));
     }
 
-    public function toUpper(): self
+    protected function toUpper(): self
     {
         $upper = function_exists('mb_strtoupper')
             ? mb_strtoupper($this->value, $this->encoding)
@@ -3509,12 +3532,12 @@ final class XString implements Stringable
         return new self($upper, $this->mode, $this->encoding);
     }
 
-    public function toUpperCase(): self
+    protected function toUpperCase(): self
     {
         return $this->toUpper();
     }
 
-    public function toLower(): self
+    protected function toLower(): self
     {
         if (function_exists('mb_convert_case')) {
             $lower = mb_convert_case($this->value, MB_CASE_LOWER_SIMPLE, $this->encoding);
@@ -3527,12 +3550,12 @@ final class XString implements Stringable
         return new self($lower, $this->mode, $this->encoding);
     }
 
-    public function toLowerCase(): self
+    protected function toLowerCase(): self
     {
         return $this->toLower();
     }
 
-    public function ucfirst(): self
+    protected function ucfirst(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);
@@ -3557,7 +3580,7 @@ final class XString implements Stringable
         return new self(strtoupper($first) . $rest, $this->mode, $this->encoding);
     }
 
-    public function lcfirst(): self
+    protected function lcfirst(): self
     {
         if ($this->value === '') {
             return new self('', $this->mode, $this->encoding);

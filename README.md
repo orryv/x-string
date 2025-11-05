@@ -61,6 +61,13 @@ $xstring = XString::new('  Grüß Gott!  ')
 echo (string) $xstring; // outputs "GRUSS GOTT!"
 ```
 
+Instance methods can also be invoked statically by providing the initial value as
+the first argument. This is useful when you only need a single operation:
+
+```php
+echo (string) XString::repeat('#', 3); // outputs "###"
+```
+
 The fluent API covers common text tasks: casing, normalization, substring
 operations, tokenisation, searching, replacing, cryptographic helpers,
 formatting, and more. Each operation honours the configured mode so you can work
