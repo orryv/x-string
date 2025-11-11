@@ -151,6 +151,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`toUpperCase`](docs/x-string/methods/toUpperCase.md) | 1.0 | `public function toUpperCase(): self`<br>Alias for `toUpper()`. |
 | [`ucfirst`](docs/x-string/methods/ucfirst.md) | 1.0 | `public function ucfirst(): self`<br>Convert the first character of the string to upper case. |
 | [`lcfirst`](docs/x-string/methods/lcfirst.md) | 1.0 | `public function lcfirst(): self`<br>Convert the first character of the string to lower case. |
+| [`toString`](docs/x-string/methods/toString.md) | 1.1 | `public function toString(): string`<br>Return the underlying PHP string without casting. |
 | [`toLower`](docs/x-string/methods/toLower.md) | 1.0 | `public function toLower(): self`<br>Convert the string to lower case. *(Alias: `toLowerCase()`)* |
 | [`toLowerCase`](docs/x-string/methods/toLowerCase.md) | 1.0 | `public function toLowerCase(): self`<br>Alias for `toLower()`. |
 | [`trim`](docs/x-string/methods/trim.md) | 1.0 | `public function trim($newline = true, $space = true, $tab = true): self`<br>Trim the string. By default it trims newlines, spaces and tabs. You can disable trimming of any of these by setting the relevant parameter to false. |

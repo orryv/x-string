@@ -3610,6 +3610,11 @@ final class XString implements Stringable
         return $this->value;
     }
 
+    public function toString(): string
+    {
+        return $this->value;
+    }
+
     /**
      * @param HtmlTag|Newline|Regex|Stringable|string|array<int, HtmlTag|Newline|Regex|Stringable|string> $input_delimiter
      * @return array<int, string>
