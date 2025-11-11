@@ -151,7 +151,6 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`toUpperCase`](docs/x-string/methods/toUpperCase.md) | 1.0 | `public function toUpperCase(): self`<br>Alias for `toUpper()`. |
 | [`ucfirst`](docs/x-string/methods/ucfirst.md) | 1.0 | `public function ucfirst(): self`<br>Convert the first character of the string to upper case. |
 | [`lcfirst`](docs/x-string/methods/lcfirst.md) | 1.0 | `public function lcfirst(): self`<br>Convert the first character of the string to lower case. |
-| [`toString`](docs/x-string/methods/toString.md) | 1.1 | `public function toString(): string`<br>Return the underlying PHP string without casting. |
 | [`toLower`](docs/x-string/methods/toLower.md) | 1.0 | `public function toLower(): self`<br>Convert the string to lower case. *(Alias: `toLowerCase()`)* |
 | [`toLowerCase`](docs/x-string/methods/toLowerCase.md) | 1.0 | `public function toLowerCase(): self`<br>Alias for `toLower()`. |
 | [`trim`](docs/x-string/methods/trim.md) | 1.0 | `public function trim($newline = true, $space = true, $tab = true): self`<br>Trim the string. By default it trims newlines, spaces and tabs. You can disable trimming of any of these by setting the relevant parameter to false. |
@@ -244,6 +243,7 @@ Will throw if internal string is not empty (new($data) with $data not empty.)
 | [`toInt`](docs/x-string/methods/toInt.md) | 1.0 | `public function toInt(): int`<br>Convert the current value to an integer, accepting optional underscores and floating-point notation (truncated toward zero) with range validation. |
 | [`toFloat`](docs/x-string/methods/toFloat.md) | 1.0 | `public function toFloat(): float`<br>Convert the current value to a finite floating-point number with underscore support. |
 | [`toBool`](docs/x-string/methods/toBool.md) | 1.0 | `public function toBool(): bool`<br>Interpret the string as a boolean using common affirmative/negative tokens and numeric semantics. |
+| [`toString`](docs/x-string/methods/toString.md) | 1.1 | `public function toString(): string`<br>Return the underlying PHP string without casting. |
 
 ### Encoding methods
 
